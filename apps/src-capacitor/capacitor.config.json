@@ -1,0 +1,9 @@
+{
+  "appId": "tech.prismcode.doveserumslab",
+  "appName": "Dove Serums Lab",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "http://192.168.1.16:9500"
+  }
+}

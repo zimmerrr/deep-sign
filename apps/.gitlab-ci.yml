@@ -1,0 +1,78 @@
+stages:
+  - build
+  - development
+  - staging
+  - production
+
+build:
+  stage: build
+  image: node:18-buster
+  before_script:
+    - cp "$NPMRC" $CI_PROJECT_DIR/.npmrc
+    - curl -f https://get.pnpm.io/v6.32.js | node - add --global pnpm@8
+    - pnpm config set store-dir .pnpm-store
+  script:
+    - pnpm install # install dependencies
+    - pnpm build
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+  artifacts:
+    paths:
+      - dist/spa
+    expire_in: 1 week
+
+development:
+  extends: .deploy
+  stage: development
+  variables:
+    BUCKET_PATH: doveserumlab.dev.virtual-event.link
+  when: on_success
+
+staging:
+  extends: .deploy
+  stage: staging
+  variables:
+    BUCKET_PATH: test-doveserumslab.digital-interactive.link
+  when: manual
+
+# production:
+#   extends: .deploy
+#   stage: production
+#   variables:
+#     BUCKET_PATH: doveserumlab.event-reg.link
+#   when: manual
+
+# Templates
+.deploy:
+  image: google/cloud-sdk
+  variables:
+    BUCKET_NAME: eva-web-hosting
+    BUCKET_PATH: catchall
+  only:
+    - master
+    - main
+  needs:
+    - build
+  script:
+    - cp "$GCP_SERVICE_KEY" $CI_PROJECT_DIR/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+
+    # Copy correct config based on stage
+    # - cp dist/spa/config.$CI_JOB_NAME.json dist/spa/config.json
+
+    # Upload cacheable files
+    - |
+      gsutil -m -h "Cache-Control=max-age=604800" \
+        rsync -r \
+        -x "dist/spa/index\.html|dist/spa/config\.json" \
+        dist/spa \
+        gs://$BUCKET_NAME/$BUCKET_PATH
+
+    # Upload non-cacheable files
+    - gsutil -h "Cache-Control:no-store,max-age=0" cp dist/spa/index.html gs://$BUCKET_NAME/$BUCKET_PATH
+    # - gsutil -h "Cache-Control:no-store,max-age=0" cp dist/spa/config.json gs://$BUCKET_NAME/$BUCKET_PATH
