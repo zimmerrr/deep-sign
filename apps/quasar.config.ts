@@ -76,7 +76,7 @@ export default configure((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
-      // https: true
+      https: true,
       open: true, // opens browser window automatically
     },
 
@@ -201,7 +201,7 @@ export default configure((/* ctx */) => {
       builder: {
         // https://www.electron.build/configuration/configuration
 
-        appId: 'dove-serum-labs-2024',
+        appId: 'deep-sign',
       },
     },
 
