@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { FilesetResolver, HolisticLandmarker } from '@mediapipe/tasks-vision'
+import { FilesetResolver, HolisticLandmarker, DrawingUtils, NormalizedLandmark } from '@mediapipe/tasks-vision'
 import { waitVideoMetadata } from 'src/components/utils'
 
 const WIDTH = 1200
@@ -29,6 +29,7 @@ const canvasRef = ref<HTMLCanvasElement>(null as any)
 
 let canvasCtx: CanvasRenderingContext2D
 let holistic: HolisticLandmarker
+let drawingUtils: DrawingUtils
 
 // Function to initialize camera
 async function initialize() {
@@ -108,8 +109,19 @@ function renderHolistic() {
 
   holistic.detectForVideo(videoElementRef.value, performance.now(), (results: any) => {
     if (results) {
-      console.log(results)
+      // console.log(results)
+
       // IMPLEMENT DRAW LANDMARKS
+      for (const result in results) {
+        const normalizedLandmark = results[result]
+        console.log(normalizedLandmark)
+
+        // Loop through each array
+        for (let i = 0; i < normalizedLandmark.length; i++) {
+          console.log(normalizedLandmark[i])
+          drawingUtils.drawConnectors(normalizedLandmark, normalizedLandmark[i], { color: '#ffffff' })
+        }
+      }
     }
     requestAnimationFrame(renderHolistic)
   })
