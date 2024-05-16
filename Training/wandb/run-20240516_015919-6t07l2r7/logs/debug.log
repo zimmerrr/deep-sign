@@ -1,0 +1,40 @@
+2024-05-16 01:59:19,877 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Current SDK version is 0.17.0
+2024-05-16 01:59:19,877 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Configure stats pid to 18632
+2024-05-16 01:59:19,877 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Loading settings from C:\Users\zimmer\.config\wandb\settings
+2024-05-16 01:59:19,877 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Loading settings from c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\settings
+2024-05-16 01:59:19,877 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program': '<python with no main file>'}
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_init.py:_log_setup():520] Logging user logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_015919-6t07l2r7\logs\debug.log
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_init.py:_log_setup():521] Logging internal logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_015919-6t07l2r7\logs\debug-internal.log
+2024-05-16 01:59:19,878 INFO    MainThread:18632 [wandb_init.py:init():560] calling init triggers
+2024-05-16 01:59:19,879 INFO    MainThread:18632 [wandb_init.py:init():567] wandb.init called with sweep_config: {}
+config: {}
+2024-05-16 01:59:19,879 INFO    MainThread:18632 [wandb_init.py:init():585] re-initializing run, found existing run on stack: 1id34116
+2024-05-16 01:59:19,881 INFO    MainThread:18632 [wandb_run.py:_finish():2103] finishing run zimmerr/deep-sign/1id34116
+2024-05-16 01:59:19,882 ERROR   MainThread:18632 [jupyter.py:save_history():437] Run pip install nbformat to save notebook history
+2024-05-16 01:59:19,882 INFO    MainThread:18632 [jupyter.py:save_ipynb():373] not saving jupyter notebook
+2024-05-16 01:59:19,882 INFO    MainThread:18632 [wandb_init.py:_jupyter_teardown():448] cleaning up jupyter logic
+2024-05-16 01:59:19,882 INFO    MainThread:18632 [wandb_run.py:_atexit_cleanup():2343] got exitcode: 0
+2024-05-16 01:59:19,882 INFO    MainThread:18632 [wandb_run.py:_restore():2326] restore
+2024-05-16 01:59:19,882 INFO    MainThread:18632 [wandb_run.py:_restore():2332] restore done
+2024-05-16 02:00:07,374 INFO    MainThread:18632 [wandb_run.py:_footer_history_summary_info():3994] rendering history
+2024-05-16 02:00:07,377 INFO    MainThread:18632 [wandb_run.py:_footer_history_summary_info():4026] rendering summary
+2024-05-16 02:00:07,395 INFO    MainThread:18632 [wandb_run.py:_footer_sync_info():3953] logging synced files
+2024-05-16 02:00:07,823 INFO    MainThread:18632 [wandb_init.py:init():610] starting backend
+2024-05-16 02:00:07,824 INFO    MainThread:18632 [wandb_init.py:init():614] setting up manager
+2024-05-16 02:00:07,827 INFO    MainThread:18632 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=spawn, using: spawn
+2024-05-16 02:00:07,829 INFO    MainThread:18632 [wandb_init.py:init():622] backend started and connected
+2024-05-16 02:00:07,834 INFO    MainThread:18632 [wandb_run.py:_label_probe_notebook():1328] probe notebook
+2024-05-16 02:00:07,835 INFO    MainThread:18632 [wandb_run.py:_label_probe_notebook():1338] Unable to probe notebook: 'NoneType' object has no attribute 'get'
+2024-05-16 02:00:07,835 INFO    MainThread:18632 [wandb_init.py:init():711] updated telemetry
+2024-05-16 02:00:07,886 INFO    MainThread:18632 [wandb_init.py:init():744] communicating run to backend with 90.0 second timeout
+2024-05-16 02:00:09,242 INFO    MainThread:18632 [wandb_run.py:_on_init():2396] communicating current version
+2024-05-16 02:00:09,933 INFO    MainThread:18632 [wandb_run.py:_on_init():2405] got version response 
+2024-05-16 02:00:09,933 INFO    MainThread:18632 [wandb_init.py:init():795] starting run threads in backend
+2024-05-16 02:00:10,378 INFO    MainThread:18632 [wandb_run.py:_console_start():2374] atexit reg
+2024-05-16 02:00:10,378 INFO    MainThread:18632 [wandb_run.py:_redirect():2229] redirect: wrap_raw
+2024-05-16 02:00:10,378 INFO    MainThread:18632 [wandb_run.py:_redirect():2294] Wrapping output streams.
+2024-05-16 02:00:10,378 INFO    MainThread:18632 [wandb_run.py:_redirect():2319] Redirects installed.
+2024-05-16 02:00:10,378 INFO    MainThread:18632 [wandb_init.py:init():838] run started, returning control to user process
