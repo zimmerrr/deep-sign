@@ -1,0 +1,123 @@
+c:\Users\zimmer\anaconda3\envs\win_deepsign\lib\site-packages\keras\src\layers\convolutional\base_conv.py:107: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(activity_regularizer=activity_regularizer, **kwargs)
+Epoch 1/600
+
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m2s[22m 26ms/step   - categorical_accuracy: 0.0447 - loss: 3.5176
+Epoch 1/600
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 8ms/step ep - categorical_accuracy: 0.0577 - loss: 3.3508
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 22ms/step - categorical_accuracy: 0.0577 - loss: 3.3507 - val_categorical_accuracy: 0.0802 - val_loss: 3.3545
+Epoch 2/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.0618 - loss: 3.2949
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 21ms/step - categorical_accuracy: 0.0618 - loss: 3.2948 - val_categorical_accuracy: 0.0576 - val_loss: 3.3141
+Epoch 3/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.0803 - loss: 3.2347
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 20ms/step - categorical_accuracy: 0.0804 - loss: 3.2345 - val_categorical_accuracy: 0.0967 - val_loss: 3.1865
+Epoch 4/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 13ms/stepep - categorical_accuracy: 0.1097 - loss: 3.1306
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 21ms/step - categorical_accuracy: 0.1097 - loss: 3.1305 - val_categorical_accuracy: 0.0988 - val_loss: 3.1172
+Epoch 5/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 10ms/stepep - categorical_accuracy: 0.1035 - loss: 3.1169
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 24ms/step - categorical_accuracy: 0.1034 - loss: 3.1170 - val_categorical_accuracy: 0.0885 - val_loss: 3.7930
+Epoch 6/600
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 10ms/stepep - categorical_accuracy: 0.1205 - loss: 3.0584
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 22ms/step - categorical_accuracy: 0.1205 - loss: 3.0583 - val_categorical_accuracy: 0.0576 - val_loss: 4.1796
+Epoch 7/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.1244 - loss: 3.0459
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 21ms/step - categorical_accuracy: 0.1244 - loss: 3.0458 - val_categorical_accuracy: 0.1461 - val_loss: 3.0913
+Epoch 8/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.1186 - loss: 3.0249
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 22ms/step - categorical_accuracy: 0.1186 - loss: 3.0245 - val_categorical_accuracy: 0.1584 - val_loss: 2.8022
+Epoch 9/600
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 10ms/stepep - categorical_accuracy: 0.1417 - loss: 2.9392
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 23ms/step - categorical_accuracy: 0.1419 - loss: 2.9388 - val_categorical_accuracy: 0.0802 - val_loss: 3.0962
+Epoch 10/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 11ms/stepep - categorical_accuracy: 0.1567 - loss: 2.8825
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 22ms/step - categorical_accuracy: 0.1567 - loss: 2.8823 - val_categorical_accuracy: 0.1811 - val_loss: 2.7678
+Epoch 11/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 10ms/stepep - categorical_accuracy: 0.1490 - loss: 2.8873
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 22ms/step - categorical_accuracy: 0.1489 - loss: 2.8874 - val_categorical_accuracy: 0.2181 - val_loss: 2.7567
+Epoch 12/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 11ms/stepep - categorical_accuracy: 0.1666 - loss: 2.8391
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 23ms/step - categorical_accuracy: 0.1666 - loss: 2.8391 - val_categorical_accuracy: 0.1358 - val_loss: 2.9362
+Epoch 13/600
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 10ms/stepep - categorical_accuracy: 0.1659 - loss: 2.7795
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 23ms/step - categorical_accuracy: 0.1660 - loss: 2.7794 - val_categorical_accuracy: 0.1996 - val_loss: 2.5588
+Epoch 14/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.1882 - loss: 2.7296
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 23ms/step - categorical_accuracy: 0.1881 - loss: 2.7296 - val_categorical_accuracy: 0.1626 - val_loss: 2.6026
+Epoch 15/600
+
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 11ms/stepep - categorical_accuracy: 0.1911 - loss: 2.6931
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 22ms/step - categorical_accuracy: 0.1910 - loss: 2.6930 - val_categorical_accuracy: 0.1687 - val_loss: 2.8055
+Epoch 16/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.1878 - loss: 2.7234
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m9s[22m 22ms/step - categorical_accuracy: 0.1879 - loss: 2.7231 - val_categorical_accuracy: 0.1749 - val_loss: 2.7382
+Epoch 17/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 9ms/step ep - categorical_accuracy: 0.2123 - loss: 2.6431
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 20ms/step - categorical_accuracy: 0.2121 - loss: 2.6434 - val_categorical_accuracy: 0.2202 - val_loss: 2.6679
+Epoch 18/600
+
+
+
+[1m61/61[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m1s[22m 8ms/step ep - categorical_accuracy: 0.2133 - loss: 2.5785
+[1m389/389[22m [32m━━━━━━━━━━━━━━━━━━━━[39m [1m8s[22m 20ms/step - categorical_accuracy: 0.2133 - loss: 2.5785 - val_categorical_accuracy: 0.1811 - val_loss: 2.8102
+Epoch 00018: early stopping

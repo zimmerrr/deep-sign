@@ -1,0 +1,59 @@
+2024-05-16 19:01:17,048 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Current SDK version is 0.17.0
+2024-05-16 19:01:17,048 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Configure stats pid to 20164
+2024-05-16 19:01:17,049 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from C:\Users\zimmer\.config\wandb\settings
+2024-05-16 19:01:17,049 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\settings
+2024-05-16 19:01:17,049 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2024-05-16 19:01:17,049 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-05-16 19:01:17,050 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program': '<python with no main file>'}
+2024-05-16 19:01:17,050 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-05-16 19:01:17,051 INFO    MainThread:20164 [wandb_init.py:_log_setup():520] Logging user logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_190117-5yatds0n\logs\debug.log
+2024-05-16 19:01:17,051 INFO    MainThread:20164 [wandb_init.py:_log_setup():521] Logging internal logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_190117-5yatds0n\logs\debug-internal.log
+2024-05-16 19:01:17,052 INFO    MainThread:20164 [wandb_init.py:init():560] calling init triggers
+2024-05-16 19:01:17,052 INFO    MainThread:20164 [wandb_init.py:init():567] wandb.init called with sweep_config: {}
+config: {}
+2024-05-16 19:01:17,052 INFO    MainThread:20164 [wandb_init.py:init():585] re-initializing run, found existing run on stack: wifpt8if
+2024-05-16 19:01:17,055 INFO    MainThread:20164 [wandb_run.py:_finish():2103] finishing run zimmerr/deep-sign/wifpt8if
+2024-05-16 19:01:17,057 ERROR   MainThread:20164 [jupyter.py:save_history():437] Run pip install nbformat to save notebook history
+2024-05-16 19:01:17,057 INFO    MainThread:20164 [jupyter.py:save_ipynb():373] not saving jupyter notebook
+2024-05-16 19:01:17,057 INFO    MainThread:20164 [wandb_init.py:_jupyter_teardown():448] cleaning up jupyter logic
+2024-05-16 19:01:17,057 INFO    MainThread:20164 [wandb_run.py:_atexit_cleanup():2343] got exitcode: 0
+2024-05-16 19:01:17,058 INFO    MainThread:20164 [wandb_run.py:_restore():2326] restore
+2024-05-16 19:01:17,059 INFO    MainThread:20164 [wandb_run.py:_restore():2332] restore done
+2024-05-16 19:01:20,033 INFO    MainThread:20164 [wandb_run.py:_footer_history_summary_info():3994] rendering history
+2024-05-16 19:01:20,033 INFO    MainThread:20164 [wandb_run.py:_footer_history_summary_info():4026] rendering summary
+2024-05-16 19:01:20,046 INFO    MainThread:20164 [wandb_run.py:_footer_sync_info():3953] logging synced files
+2024-05-16 19:01:22,074 INFO    MainThread:20164 [wandb_init.py:init():610] starting backend
+2024-05-16 19:01:22,074 INFO    MainThread:20164 [wandb_init.py:init():614] setting up manager
+2024-05-16 19:01:22,077 INFO    MainThread:20164 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=spawn, using: spawn
+2024-05-16 19:01:22,077 INFO    MainThread:20164 [wandb_init.py:init():622] backend started and connected
+2024-05-16 19:01:22,083 INFO    MainThread:20164 [wandb_run.py:_label_probe_notebook():1328] probe notebook
+2024-05-16 19:01:22,083 INFO    MainThread:20164 [wandb_run.py:_label_probe_notebook():1338] Unable to probe notebook: 'NoneType' object has no attribute 'get'
+2024-05-16 19:01:22,083 INFO    MainThread:20164 [wandb_init.py:init():711] updated telemetry
+2024-05-16 19:01:22,126 INFO    MainThread:20164 [wandb_init.py:init():744] communicating run to backend with 90.0 second timeout
+2024-05-16 19:01:22,994 INFO    MainThread:20164 [wandb_run.py:_on_init():2396] communicating current version
+2024-05-16 19:01:23,455 INFO    MainThread:20164 [wandb_run.py:_on_init():2405] got version response 
+2024-05-16 19:01:23,457 INFO    MainThread:20164 [wandb_init.py:init():795] starting run threads in backend
+2024-05-16 19:01:23,750 INFO    MainThread:20164 [wandb_run.py:_console_start():2374] atexit reg
+2024-05-16 19:01:23,750 INFO    MainThread:20164 [wandb_run.py:_redirect():2229] redirect: wrap_raw
+2024-05-16 19:01:23,750 INFO    MainThread:20164 [wandb_run.py:_redirect():2294] Wrapping output streams.
+2024-05-16 19:01:23,750 INFO    MainThread:20164 [wandb_run.py:_redirect():2319] Redirects installed.
+2024-05-16 19:01:23,751 INFO    MainThread:20164 [wandb_init.py:init():838] run started, returning control to user process
+2024-05-16 21:37:35,794 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Current SDK version is 0.17.0
+2024-05-16 21:37:35,795 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Configure stats pid to 20164
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from C:\Users\zimmer\.config\wandb\settings
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\settings
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program': '<python with no main file>'}
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_setup.py:_flush():76] Applying login settings: {}
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_init.py:_log_setup():520] Logging user logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_213735-7czkd0h5\logs\debug.log
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_init.py:_log_setup():521] Logging internal logs to c:\Users\zimmer\Desktop\AVANTECH\deep-sign\Training\wandb\run-20240516_213735-7czkd0h5\logs\debug-internal.log
+2024-05-16 21:37:35,796 INFO    MainThread:20164 [wandb_init.py:_jupyter_setup():466] configuring jupyter hooks <wandb.sdk.wandb_init._WandbInit object at 0x00000165903B2DD0>
+2024-05-16 21:37:35,797 INFO    MainThread:20164 [wandb_init.py:init():560] calling init triggers
+2024-05-16 21:37:35,797 INFO    MainThread:20164 [wandb_init.py:init():567] wandb.init called with sweep_config: {}
+config: {}
+2024-05-16 21:37:35,797 INFO    MainThread:20164 [wandb_init.py:init():585] re-initializing run, found existing run on stack: 5yatds0n
+2024-05-16 21:37:35,799 INFO    MainThread:20164 [wandb_run.py:_finish():2103] finishing run zimmerr/deep-sign/5yatds0n
+2024-05-16 21:37:35,799 INFO    MainThread:20164 [wandb_run.py:_atexit_cleanup():2343] got exitcode: 0
+2024-05-16 21:37:35,800 INFO    MainThread:20164 [wandb_run.py:_restore():2326] restore
+2024-05-16 21:37:35,801 INFO    MainThread:20164 [wandb_run.py:_restore():2332] restore done

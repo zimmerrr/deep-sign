@@ -1,0 +1,52 @@
+{
+    "os": "Windows-10-10.0.22631-SP0",
+    "python": "3.10.14",
+    "heartbeatAt": "2024-05-16T08:00:13.145133",
+    "startedAt": "2024-05-16T07:59:43.354805",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "<python with no main file>",
+    "codePathLocal": null,
+    "git": {
+        "remote": "https://github.com/zimmerrr/deep-sign.git",
+        "commit": "16fee58ad5c9c39db29c9da29fc12b6c3f1eb272"
+    },
+    "email": "zimmertorrijos@gmail.com",
+    "root": "C:/Users/zimmer/Desktop/AVANTECH/deep-sign",
+    "host": "LAPTOP-7BTMRO7K",
+    "username": "zimmer",
+    "executable": "c:\\Users\\zimmer\\anaconda3\\envs\\win_deepsign\\python.exe",
+    "cpu_count": 14,
+    "cpu_count_logical": 20,
+    "cpu_freq": {
+        "current": 2700.0,
+        "min": 0.0,
+        "max": 2700.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2700.0,
+            "min": 0.0,
+            "max": 2700.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 475.66894149780273,
+            "used": 467.37121200561523
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+            "memory_total": 4294967296
+        }
+    ],
+    "memory": {
+        "total": 15.710990905761719
+    }
+}

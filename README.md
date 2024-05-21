@@ -18,3 +18,14 @@ COSC 200A - UNDERGRADUATE THESIS
 1. Christian Andrei Torrijos - Development Lead
 2. Jerome Joaquin - Developer
 3. John Hendrix Macasiab - Developer
+
+
+# Pre-requisites
+install conda
+
+
+install pytorch
+
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+pip install tqdm for progress bar
+pip isntall datasets generate dataset from files
