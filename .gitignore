@@ -1,3 +1,9 @@
 Data/
 Dataset/
 TrainingV1/Logs/
+cache/
+cache2/
+TrainingV2/checkpoints/
+**/__pycache__
+TrainingV2/wandb/
+TrainingV2/model/__pycache__/deepsign.cpython-312.pyc

@@ -3,6 +3,8 @@ import os
 import numpy as np
 import glob
 import tqdm
+from datasets import load_from_disk
+from datasets import DatasetDict
 
 actions = np.array([
     'hello', 'thanks', 'iloveyou', 'idle',
@@ -20,7 +22,7 @@ NUM_SEQUENCE = 30
 
 
 def gen():
-    for gesture_path in tqdm.tqdm(glob.glob('../Data/**')[:1], '[GENERATING DICTIONARY]'):
+    for gesture_path in tqdm.tqdm(glob.glob('../Data/**'), '[GENERATING DICTIONARY]'):
         if not os.path.isdir(gesture_path):
             continue 
         gesture_label = os.path.basename(os.path.normpath(gesture_path))
@@ -40,5 +42,26 @@ def gen():
 
 
 if __name__ == '__main__':
-    ds = Dataset.from_generator(gen)
-    ds.save_to_disk("../cache")
+    LOAD_FROM_CACHE = True
+
+    if LOAD_FROM_CACHE: 
+        ds = load_from_disk("../cache")
+    else:
+        ds = Dataset.from_generator(gen)
+        ds.save_to_disk("../cache")
+
+    #PROCESSING
+    ds = ds.class_encode_column('label')
+    datasets = ds.train_test_split(
+        test_size = 0.10, 
+        shuffle = True,
+        seed = 10293812098,
+        stratify_by_column='label',
+    )
+    
+    ds = DatasetDict(
+        train = datasets['train'],
+        test = datasets['test']
+    )
+
+    ds.save_to_disk("../cache2")
