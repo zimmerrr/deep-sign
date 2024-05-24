@@ -14,6 +14,9 @@ mp_drawing = mp.solutions.drawing_utils
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 checkpoint_path = "./checkpoints/prime-lake-22/checkpoint.pt"
 
+
+# TODO: add timestamp to output folder for continous recording
+
 DATA_PATH = os.path.join('../Data') 
 NO_SEQUNCE = 30
 SEQUENCE_LENGTH = 30
@@ -47,7 +50,6 @@ if __name__ == "__main__":
     cap = cv2.VideoCapture(0)
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while cap.isOpened():
-            # NEW LOOP
             # Loop through actions
             for action in actions:
                 # Loop through sequences aka videos

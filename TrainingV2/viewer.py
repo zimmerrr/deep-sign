@@ -45,8 +45,8 @@ if __name__ == "__main__":
         while cap.isOpened():
             # print(predictions)
             # Read feed
-            ret, frame = cap.read()
 
+            ret, frame = cap.read()
             image, results = mediapipe_detection(frame, holistic)
             
             draw_styled_landmarks(image, results)
