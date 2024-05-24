@@ -11,7 +11,7 @@ import os
 
 torch.manual_seed(182731928)
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-NUM_EPOCH = 500
+NUM_EPOCH = 100
 LEARNING_RATE = 0.001
 BATCH_SIZE = 128
 
@@ -38,7 +38,9 @@ if __name__ == "__main__":
     ds = load_from_disk("../cache2")
     ds = ds.with_format('torch')
 
-    model_config = DeepSignConfig()
+    model_config = DeepSignConfig(
+        
+    )
     model = DeepSign(model_config).to(DEVICE)
 
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
 
     wandb.init(
         project="deep-sign-v2", 
-        notes="",
+        notes="return adjust learning rate to 0.001",
         config={
             "dataset": "v1",
             "batch_size": BATCH_SIZE,
@@ -72,7 +74,7 @@ if __name__ == "__main__":
         
         model.train()
 
-        #TEST LOOP
+        #TRAIN LOOP
         train_loss = []
         for sample in train_dl:
             input = sample['sequence'].to(DEVICE)
@@ -109,6 +111,7 @@ if __name__ == "__main__":
         pbar.set_postfix(**data)
         wandb.log(data, step=epoch)
         
+        # SAVE MODEL IF ACCURACY INCREASED
         if (epoch + 1) % 10 == 0 and test_acc > best_acc:
             best_acc = test_acc
             base_path = f"checkpoints/{wandb.run.name}/"
