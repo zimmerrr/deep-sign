@@ -10,6 +10,7 @@ class DeepSignConfigV2:
     num_label: int = 30
     lstm1_size: int = 64
     lstm2_size: int = 128
+    lstm3_size: int = 64 * 30
     linear_size: int = 960
 
 
@@ -18,8 +19,8 @@ class DeepSignV2(nn.Module):
         super(DeepSignV2, self).__init__()
         self.lstm1 = nn.LSTM(config.input_size, config.lstm1_size, batch_first=True)
         self.lstm2 = nn.LSTM(config.lstm1_size, config.lstm2_size, batch_first=True)
-        self.lstm3 = nn.LSTM(config.lstm2_size, config.lstm1_size, batch_first=True)
-        self.linear1 = nn.Linear(config.lstm1_size, config.linear_size)
+        self.lstm3 = nn.LSTM(config.lstm2_size, config.lstm3_size, batch_first=True)
+        self.linear1 = nn.Linear(config.lstm3_size, config.linear_size)
         self.linear2 = nn.Linear(config.linear_size, config.num_label)
 
     def forward(self, input):
@@ -31,6 +32,9 @@ class DeepSignV2(nn.Module):
         output = self.linear2(output)
 
         return output
+
+    def get_num_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
 if __name__ == "__main__":

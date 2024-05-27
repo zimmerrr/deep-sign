@@ -39,9 +39,9 @@ def get_loss_and_accuracy(model, dl, criterion=None):
         accuracy = total_correct / total_samples
         total_accuracy.append(accuracy.item())
 
-    avg_loss = 0 if not criterion else sum(total_loss) / len(total_loss)
+    avg_loss = sum(total_loss) / len(total_loss) if criterion else 0
     avg_accuracy = sum(total_accuracy) / len(total_accuracy)
-    return avg_accuracy, avg_loss
+    return avg_loss, avg_accuracy
 
 
 # Make sure all examples have the same number of keypoints
@@ -66,8 +66,7 @@ if __name__ == "__main__":
 
     model_config = DeepSignConfigV2(
         num_label=len(ds["train"].features["label"].names),
-        lstm1_size=64 * 5,
-        lstm2_size=64 * 5 * 2,
+        lstm3_size=64 * 30,
     )
     model = DeepSignV2(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
@@ -86,9 +85,9 @@ if __name__ == "__main__":
     wandb.init(
         mode="disabled",
         project="deep-sign-v2",
-        notes="",
+        notes="Only pass the last sequence to the linear layer for classification",
         config={
-            "dataset": "v1",
+            "dataset": "fsl-10",
             "batch_size": BATCH_SIZE,
             "num_epoch": NUM_EPOCH,
             "lr": LEARNING_RATE,
@@ -98,7 +97,7 @@ if __name__ == "__main__":
             "train_count": len(train_dl),
             "test_count": len(test_dl),
         },
-        tags=["deepsign-dataset-v1"],
+        tags=["deepsign-dataset-v2", "deepsign_v2"],
     )
 
     best_acc = 0
@@ -107,14 +106,12 @@ if __name__ == "__main__":
         model.train()
 
         # TRAIN LOOP
-        train_loss = []
         for sample in train_dl:
             input = sample["keypoints"].to(DEVICE)
             label = sample["label"].to(DEVICE)
 
             output = model(input)
             loss = criterion(output, label)
-            train_loss.append(loss.item())
 
             # BACK PROPAGATION
             optimizer.zero_grad(set_to_none=True)
@@ -122,22 +119,12 @@ if __name__ == "__main__":
             optimizer.step()
 
         # TEST LOOP
-        model.eval()
-        test_loss = []
-        for sample in test_dl:
-            input = sample["keypoints"].to(DEVICE)
-            label = sample["label"].to(DEVICE)
-
-            output = model(input)
-            loss = criterion(output, label)
-            test_loss.append(loss.item())
-
-        _, train_acc = get_loss_and_accuracy(model, train_dl)
+        train_loss, train_acc = get_loss_and_accuracy(model, train_dl, criterion)
         test_loss, test_acc = get_loss_and_accuracy(model, test_dl, criterion)
 
         data = {
-            "train_loss": round(sum(train_loss) / len(train_loss), 3),
-            "test_loss": round(sum(test_loss) / len(test_loss), 3),
+            "train_loss": train_loss,
+            "test_loss": test_loss,
             "train_acc": train_acc,
             "test_acc": test_acc,
         }
