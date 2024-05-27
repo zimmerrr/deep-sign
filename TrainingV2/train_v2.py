@@ -18,13 +18,19 @@ BATCH_SIZE = 128
 
 
 @torch.no_grad()
-def get_accuracy(model, dl):
+def get_loss_and_accuracy(model, dl, criterion=None):
     model.eval()
     total_accuracy = []
+    total_loss = []
     for sample in dl:
         input = sample["keypoints"].to(DEVICE)
         label = sample["label"].to(DEVICE)
         output = model(input)
+
+        if criterion:
+            loss = criterion(output, label)
+            total_loss.append(loss.item())
+
         output = F.softmax(output)
         output = output.argmax(-1)
 
@@ -33,7 +39,9 @@ def get_accuracy(model, dl):
         accuracy = total_correct / total_samples
         total_accuracy.append(accuracy.item())
 
-    return sum(total_accuracy) / len(total_accuracy)
+    avg_loss = 0 if not criterion else sum(total_loss) / len(total_loss)
+    avg_accuracy = sum(total_accuracy) / len(total_accuracy)
+    return avg_accuracy, avg_loss
 
 
 # Make sure all examples have the same number of keypoints
@@ -58,14 +66,22 @@ if __name__ == "__main__":
 
     model_config = DeepSignConfigV2(
         num_label=len(ds["train"].features["label"].names),
+        lstm1_size=64 * 5,
+        lstm2_size=64 * 5 * 2,
     )
     model = DeepSignV2(model_config).to(DEVICE)
+    print("Number of parameters:", model.get_num_parameters())
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    train_dl = DataLoader(ds["train"], batch_size=BATCH_SIZE)
-    test_dl = DataLoader(ds["test"], batch_size=BATCH_SIZE)
+    dl_params = dict(
+        batch_size=BATCH_SIZE,
+        num_workers=4,
+        persistent_workers=True,
+    )
+    train_dl = DataLoader(ds["train"], **dl_params)
+    test_dl = DataLoader(ds["test"], **dl_params)
 
     wandb.init(
         mode="disabled",
@@ -92,7 +108,7 @@ if __name__ == "__main__":
 
         # TRAIN LOOP
         train_loss = []
-        for sample in tqdm.tqdm(train_dl, "[TRAIN]"):
+        for sample in train_dl:
             input = sample["keypoints"].to(DEVICE)
             label = sample["label"].to(DEVICE)
 
@@ -101,14 +117,14 @@ if __name__ == "__main__":
             train_loss.append(loss.item())
 
             # BACK PROPAGATION
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
 
         # TEST LOOP
         model.eval()
         test_loss = []
-        for sample in tqdm.tqdm(test_dl, "[TEST]"):
+        for sample in test_dl:
             input = sample["keypoints"].to(DEVICE)
             label = sample["label"].to(DEVICE)
 
@@ -116,12 +132,13 @@ if __name__ == "__main__":
             loss = criterion(output, label)
             test_loss.append(loss.item())
 
-        test_acc = get_accuracy(model, test_dl)
+        _, train_acc = get_loss_and_accuracy(model, train_dl)
+        test_loss, test_acc = get_loss_and_accuracy(model, test_dl, criterion)
 
         data = {
             "train_loss": round(sum(train_loss) / len(train_loss), 3),
             "test_loss": round(sum(test_loss) / len(test_loss), 3),
-            "train_acc": get_accuracy(model, train_dl),
+            "train_acc": train_acc,
             "test_acc": test_acc,
         }
         pbar.set_postfix(**data)
