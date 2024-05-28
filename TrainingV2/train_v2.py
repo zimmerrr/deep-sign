@@ -59,14 +59,17 @@ def padding_transform(examples):
 
 
 if __name__ == "__main__":
-    ds = load_from_disk("../datasets_cache/fsl-105")
+    ds = load_from_disk("../datasets_cache/fsl-143-v1")
     print(ds)
     ds = ds.with_format("torch")
     ds.set_transform(padding_transform)
 
     model_config = DeepSignConfigV2(
         num_label=len(ds["train"].features["label"].names),
-        lstm3_size=64 * 30,
+        lstm1_size=256,
+        lstm2_size=256,
+        lstm3_size=256,
+        linear_size=128,
     )
     model = DeepSignV2(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
@@ -78,16 +81,17 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         num_workers=4,
         persistent_workers=True,
+        prefetch_factor=6,
     )
     train_dl = DataLoader(ds["train"], **dl_params)
     test_dl = DataLoader(ds["test"], **dl_params)
 
     wandb.init(
-        mode="disabled",
+        # mode="disabled",
         project="deep-sign-v2",
-        notes="Only pass the last sequence to the linear layer for classification",
+        notes="",
         config={
-            "dataset": "fsl-10",
+            "dataset": "fsl-143-v1",
             "batch_size": BATCH_SIZE,
             "num_epoch": NUM_EPOCH,
             "lr": LEARNING_RATE,
@@ -97,7 +101,7 @@ if __name__ == "__main__":
             "train_count": len(train_dl),
             "test_count": len(test_dl),
         },
-        tags=["deepsign-dataset-v2", "deepsign_v2"],
+        tags=["fsl-143-v1", "deepsign_v2"],
     )
 
     best_acc = 0
