@@ -69,13 +69,24 @@ if __name__ == "__main__":
 
     ds = load_from_disk("../datasets_cache/fsl-143-v1")
     ds = concatenate_datasets([ds["train"], ds["test"]])
+    feature_label = ds.features["label"]
     gestures = ds.features["label"].names
-    filtered_ds = list(filter(lambda x: x["label"] == gesture_idx, ds))
+
+    samples_by_gesture = {}
+
+    for example in ds:
+        gesture_name = feature_label.int2str(example["label"])
+        if gesture_name not in samples_by_gesture:
+            samples_by_gesture[gesture_name] = []
+        samples_by_gesture[gesture_name].append(example)
+
+    ds = None
+    filtered_ds = samples_by_gesture[gestures[gesture_idx]]
     num_samples = len(filtered_ds)
 
     while running:
         if changed:
-            filtered_ds = list(filter(lambda x: x["label"] == gesture_idx, ds))
+            filtered_ds = samples_by_gesture[gestures[gesture_idx]]
             num_samples = len(filtered_ds)
             sample_idx = 0
             changed = False
@@ -86,28 +97,28 @@ if __name__ == "__main__":
         sample = filtered_ds[sample_idx]
         last_key = play(sample)
 
-        # NEXT SAMPLE
+        # NEXT SAMPLE = d
         if last_key == 100:
             sample_idx = (sample_idx + 1) % num_samples
-            changed = True
             continue
-        # PREVIOUS SAMPLE
+        # PREVIOUS SAMPLE = a
         elif last_key == 97:
+            print("bf", sample_idx)
             sample_idx = (sample_idx + num_samples - 1) % num_samples
-            changed = True
+            print("af", sample_idx)
             continue
 
-        # NEXT GESTURE
+        # NEXT GESTURE = w
         elif last_key == 119:
-            gesture_idx = (gesture_idx + len(gestures) + 1) % len(gestures)
+            gesture_idx = (gesture_idx + 1) % len(gestures)
             changed = True
             continue
-        # PREVIOUS GESTURE
-        elif last_key == 155:
+        # PREVIOUS GESTURE = s
+        elif last_key == 115:
             gesture_idx = (gesture_idx + len(gestures) - 1) % len(gestures)
             changed = True
             continue
-        elif last_key == 32:
+        elif last_key == 32: # space
             running = False
             break
         # TODO: ADD LEFT RIGHT ARROW KEY TO NEXT
