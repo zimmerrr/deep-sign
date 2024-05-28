@@ -3,6 +3,8 @@ Dataset/
 TrainingV1/Logs/
 cache/
 cache2/
+cache3/
+datasets_cache/
 TrainingV2/checkpoints/
 **/__pycache__
 TrainingV2/wandb/
