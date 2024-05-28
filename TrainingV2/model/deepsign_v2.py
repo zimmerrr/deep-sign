@@ -26,9 +26,9 @@ class DeepSignV2(nn.Module):
     def forward(self, input):
         output, _ = self.lstm1(input)
         output, _ = self.lstm2(output)
-        output, _ = self.lstm3(output)
-        # Only pass the last sequence to the linear layer for classification
-        output = self.linear1(output[:, -1, :])
+        output, (hn, cn) = self.lstm3(output)
+        # Only pass the hn to the linear layer for classification
+        output = self.linear1(hn.view(-1, hn.shape[-1]))
         output = self.linear2(output)
 
         return output
