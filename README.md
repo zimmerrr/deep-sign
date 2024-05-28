@@ -22,10 +22,7 @@ COSC 200A - UNDERGRADUATE THESIS
 
 # Pre-requisites
 install conda
-
-
-install pytorch
-
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-pip install tqdm for progress bar
-pip isntall datasets generate dataset from files
+pip install tqdm datasets mediapipe wandb
+pip install tqdm # for progress bar
+pip isntall datasets # generate dataset from files
