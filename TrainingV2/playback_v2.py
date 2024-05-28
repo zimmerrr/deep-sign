@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from datasets import load_from_disk, concatenate_datasets
+from tqdm import tqdm
 
 WIDTH = 640
 HEIGHT = 360
@@ -74,7 +75,7 @@ if __name__ == "__main__":
 
     samples_by_gesture = {}
 
-    for example in ds:
+    for example in tqdm(ds, "Loading dataset"):
         gesture_name = feature_label.int2str(example["label"])
         if gesture_name not in samples_by_gesture:
             samples_by_gesture[gesture_name] = []
@@ -91,7 +92,9 @@ if __name__ == "__main__":
             sample_idx = 0
             changed = False
             print(
-                f"Gesture: {gestures[gesture_idx]}, Sample: {sample_idx + 1}/{num_samples}"
+                f"Gesture: {gestures[gesture_idx]}, "
+                f"Sample: {sample_idx + 1}/{num_samples}, "
+                f"Frames: {len(filtered_ds[sample_idx]['keypoints'])}"
             )
 
         sample = filtered_ds[sample_idx]
@@ -103,9 +106,7 @@ if __name__ == "__main__":
             continue
         # PREVIOUS SAMPLE = a
         elif last_key == 97:
-            print("bf", sample_idx)
             sample_idx = (sample_idx + num_samples - 1) % num_samples
-            print("af", sample_idx)
             continue
 
         # NEXT GESTURE = w
@@ -118,7 +119,7 @@ if __name__ == "__main__":
             gesture_idx = (gesture_idx + len(gestures) - 1) % len(gestures)
             changed = True
             continue
-        elif last_key == 32: # space
+        elif last_key == 32:  # space
             running = False
             break
         # TODO: ADD LEFT RIGHT ARROW KEY TO NEXT
