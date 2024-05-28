@@ -12,8 +12,9 @@ from utils import mediapipe_detection, extract_keypoints
 
 mp_holistic = mp.solutions.holistic
 
-DATA_PATH = os.path.join("../Dataset/fsl-10")
-NUM_PROC = max(int(os.cpu_count() * 0.8), 1)  # Use all available processors except 2
+DATASET_NAME = "fsl-143-v1"
+DATA_PATH = os.path.join(f"../Dataset/{DATASET_NAME}")
+NUM_PROC = max(int(os.cpu_count() * 0.2), 1)  # Use all available processors except 2
 
 
 def get_files(examples):
@@ -86,12 +87,13 @@ if __name__ == "__main__":
     LOAD_FROM_CACHE = False
 
     if LOAD_FROM_CACHE:
-        ds = load_from_disk("../datasets_cache/fsl-105-raw")
+        os.path.join(DATA_PATH, )
+        ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}-raw")
     else:
         ds = Dataset.from_csv(
-            "../Dataset/fsl-105/labels.csv",
+            f"../Dataset/{DATASET_NAME}/labels.csv",
             cache_dir="../datasets_cache",
-        ).take(10)
+        )
 
         # PROCESSING
         ds = ds.map(get_files, batched=True, batch_size=100)
@@ -100,11 +102,11 @@ if __name__ == "__main__":
         ds = ds.map(
             get_keypoints,
             batched=True,
-            batch_size=5,
+            batch_size=15,
             num_proc=NUM_PROC,
         )
 
-        ds.save_to_disk("../datasets_cache/fsl-105-raw")
+        ds.save_to_disk(f"../datasets_cache/{DATASET_NAME}-raw")
 
     datasets = ds.train_test_split(
         test_size=0.10,
@@ -115,4 +117,4 @@ if __name__ == "__main__":
 
     ds = DatasetDict(train=datasets["train"], test=datasets["test"])
 
-    ds.save_to_disk("../datasets_cache/fsl-105")
+    ds.save_to_disk(f"../datasets_cache/{DATASET_NAME}")
