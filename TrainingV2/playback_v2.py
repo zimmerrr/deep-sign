@@ -1,9 +1,6 @@
 import cv2
-import os
-import glob
 import numpy as np
-from time import sleep
-from datasets import load_from_disk
+from datasets import load_from_disk, concatenate_datasets
 
 WIDTH = 640
 HEIGHT = 360
@@ -70,7 +67,8 @@ if __name__ == "__main__":
     gesture_idx = 0
     changed = True
 
-    ds = load_from_disk("../datasets_cache/fsl-105-raw")
+    ds = load_from_disk("../datasets_cache/fsl-143-v1")
+    ds = concatenate_datasets([ds["train"], ds["test"]])
     gestures = ds.features["label"].names
     filtered_ds = list(filter(lambda x: x["label"] == gesture_idx, ds))
     num_samples = len(filtered_ds)
