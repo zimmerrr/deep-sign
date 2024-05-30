@@ -9,12 +9,18 @@ from torch.utils.data import DataLoader
 import wandb
 import os
 
+os.environ["WANDB_API_KEY"] = "7204bcf714a2bd747d4d973bc999fbc86df91649"
 
 torch.manual_seed(182731928)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_EPOCH = 100
+DATASET_NAME = "fsl-105-v2"
+NUM_EPOCH = 2000
 LEARNING_RATE = 0.001
-BATCH_SIZE = 128
+BATCH_SIZE = 64
+MINIBATCH_SIZE = 32
+
+# Make sure the batch size is divisible by the mini-batch size
+assert BATCH_SIZE / MINIBATCH_SIZE == BATCH_SIZE // MINIBATCH_SIZE
 
 
 @torch.no_grad()
@@ -49,26 +55,25 @@ def get_loss_and_accuracy(model, dl, criterion=None):
 def padding_transform(examples):
     max_len = max([len(kp) for kp in examples["keypoints"]])
 
+    pad_value = [0] * 1662
     for keypoint in examples["keypoints"]:
         missing = max_len - len(keypoint)
-        for _ in range(missing):
-            keypoint.append(keypoint[-1])
+        if missing > 0:
+            keypoint[0:0] = [pad_value] * missing
 
-    examples["keypoints"] = torch.tensor(examples["keypoints"], dtype=torch.float32)
+    examples["keypoints"] = torch.tensor(examples["keypoints"])
     return examples
 
 
 if __name__ == "__main__":
-    ds = load_from_disk("../datasets_cache/fsl-143-v1")
+    ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
     print(ds)
     ds = ds.with_format("torch")
     ds.set_transform(padding_transform)
 
     model_config = DeepSignConfigV2(
         num_label=len(ds["train"].features["label"].names),
-        lstm1_size=256,
-        lstm2_size=256,
-        lstm3_size=256,
+        lstm_size=256,
         linear_size=128,
     )
     model = DeepSignV2(model_config).to(DEVICE)
@@ -78,30 +83,30 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     dl_params = dict(
-        batch_size=BATCH_SIZE,
-        num_workers=4,
+        batch_size=MINIBATCH_SIZE,
         persistent_workers=True,
-        prefetch_factor=6,
     )
-    train_dl = DataLoader(ds["train"], **dl_params)
-    test_dl = DataLoader(ds["test"], **dl_params)
+    train_dl = DataLoader(ds["train"], num_workers=8, **dl_params)
+    test_dl = DataLoader(ds["test"], num_workers=2, **dl_params)
 
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes="",
+        notes="warm-cloud-41 but limited num samples to the avg sample count per label",
         config={
-            "dataset": "fsl-143-v1",
+            "dataset": "v2",
             "batch_size": BATCH_SIZE,
             "num_epoch": NUM_EPOCH,
             "lr": LEARNING_RATE,
             "model_config": model_config,
             "loss_fn": criterion.__class__.__name__,
             "optimizer": optimizer.__class__.__name__,
-            "train_count": len(train_dl),
-            "test_count": len(test_dl),
+            "train_count": ds["train"],
+            "test_count": ds["test"],
+            "train_batch_count": len(train_dl),
+            "test_batch_count": len(test_dl),
         },
-        tags=["fsl-143-v1", "deepsign_v2"],
+        tags=[DATASET_NAME, "deepsign_v2", "fp32"],
     )
 
     best_acc = 0
@@ -117,23 +122,27 @@ if __name__ == "__main__":
             output = model(input)
             loss = criterion(output, label)
 
+            # Accomodate mini-batch size in the loss
+            loss = loss / (BATCH_SIZE / MINIBATCH_SIZE)
+
             # BACK PROPAGATION
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
 
         # TEST LOOP
-        train_loss, train_acc = get_loss_and_accuracy(model, train_dl, criterion)
-        test_loss, test_acc = get_loss_and_accuracy(model, test_dl, criterion)
+        if (epoch + 1) % 10 == 0:
+            train_loss, train_acc = get_loss_and_accuracy(model, train_dl, criterion)
+            test_loss, test_acc = get_loss_and_accuracy(model, test_dl, criterion)
 
-        data = {
-            "train_loss": train_loss,
-            "test_loss": test_loss,
-            "train_acc": train_acc,
-            "test_acc": test_acc,
-        }
-        pbar.set_postfix(**data)
-        wandb.log(data, step=epoch)
+            data = {
+                "train_loss": train_loss,
+                "test_loss": test_loss,
+                "train_acc": train_acc,
+                "test_acc": test_acc,
+            }
+            pbar.set_postfix(**data)
+            wandb.log(data, step=epoch)
 
         # SAVE MODEL IF ACCURACY INCREASED
         if (epoch + 1) % 10 == 0 and test_acc > best_acc:
