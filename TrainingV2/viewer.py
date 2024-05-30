@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import torch.nn.functional as F
-from model.deepsign import DeepSign
+from model.deepsign_v2 import DeepSignV2
 import torch
 from datasets import load_from_disk, ClassLabel
 from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints
@@ -25,17 +25,18 @@ mp_holistic = mp.solutions.holistic
 mp_drawing = mp.solutions.drawing_utils
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-checkpoint_path = "./checkpoints/prime-lake-22/checkpoint.pt"
+DATASET_NAME = "fsl-105"
+checkpoint_path = "./checkpoints/genial-microwave-37/checkpoint.pt"
 sequence = []
 sentence = []
 predictions = []
 threshold = 0.5
 
 if __name__ == "__main__":
-    ds = load_from_disk("../cache2")
+    ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
 
     checkpoint = torch.load(checkpoint_path)
-    model = DeepSign(checkpoint["config"]).to(DEVICE)
+    model = DeepSignV2(checkpoint["config"]).to(DEVICE)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
