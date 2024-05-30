@@ -103,10 +103,12 @@ if __name__ == "__main__":
         # NEXT SAMPLE = d
         if last_key == 100:
             sample_idx = (sample_idx + 1) % num_samples
+            print(f"Sample: {sample_idx + 1}/{num_samples}, ")
             continue
         # PREVIOUS SAMPLE = a
         elif last_key == 97:
             sample_idx = (sample_idx + num_samples - 1) % num_samples
+            print(f"Sample: {sample_idx + 1}/{num_samples}, ")
             continue
 
         # NEXT GESTURE = w
