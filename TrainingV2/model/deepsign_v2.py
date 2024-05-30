@@ -8,27 +8,39 @@ from dataclasses import dataclass
 class DeepSignConfigV2:
     input_size: int = 1662
     num_label: int = 30
-    lstm1_size: int = 64
-    lstm2_size: int = 128
-    lstm3_size: int = 64 * 30
+    lstm_layers: int = 3
+    lstm_size: int = 64
     linear_size: int = 960
+    dropout = 0.2
 
 
 class DeepSignV2(nn.Module):
     def __init__(self, config: DeepSignConfigV2):
         super(DeepSignV2, self).__init__()
-        self.lstm1 = nn.LSTM(config.input_size, config.lstm1_size, batch_first=True)
-        self.lstm2 = nn.LSTM(config.lstm1_size, config.lstm2_size, batch_first=True)
-        self.lstm3 = nn.LSTM(config.lstm2_size, config.lstm3_size, batch_first=True)
-        self.linear1 = nn.Linear(config.lstm3_size, config.linear_size)
-        self.linear2 = nn.Linear(config.linear_size, config.num_label)
+        self.lstm1 = nn.LSTM(
+            config.input_size,
+            config.lstm_size,
+            config.lstm_layers,
+            batch_first=True,
+            dropout=config.dropout,
+        )
+        # self.lstm2 = nn.LSTM(config.lstm1_size, config.lstm2_size, batch_first=True)
+        # self.lstm3 = nn.LSTM(config.lstm2_size, config.lstm3_size, batch_first=True)
+        self.linear1 = nn.Linear(
+            config.lstm_layers * config.lstm_size,
+            config.lstm_layers * config.linear_size,
+        )
+        self.dropout = nn.Dropout(config.dropout)
+        self.linear2 = nn.Linear(
+            config.lstm_layers * config.linear_size,
+            config.num_label,
+        )
 
     def forward(self, input):
-        output, _ = self.lstm1(input)
-        output, _ = self.lstm2(output)
-        output, (hn, cn) = self.lstm3(output)
-        # Only pass the hn to the linear layer for classification
-        output = self.linear1(hn.view(-1, hn.shape[-1]))
+        batch_size = input.shape[0]
+        output, (hn, cn) = self.lstm1(input)
+        output = self.linear1(hn.view((batch_size, -1)))
+        output = self.dropout(output)
         output = self.linear2(output)
 
         return output
