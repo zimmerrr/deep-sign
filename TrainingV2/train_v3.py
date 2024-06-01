@@ -1,6 +1,6 @@
 import time
 from model.deepsign_v2 import DeepSignV2, DeepSignConfigV2
-from augmentations.augmentation_v1 import AugmentationV1, Transform, Flip, Scale
+from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale
 from datasets import load_from_disk
 import torch
 import torch.nn as nn
@@ -14,11 +14,12 @@ os.environ["WANDB_API_KEY"] = "7204bcf714a2bd747d4d973bc999fbc86df91649"
 
 torch.manual_seed(182731928)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATASET_NAME = "fsl-105-v2"
+DATASET_NAME = "v3-fsl-105-v3"
 NUM_EPOCH = 2000
 LEARNING_RATE = 0.001
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
+SEQUENCE_LENGTH = 15
 
 # Make sure the batch size is divisible by the mini-batch size
 assert BATCH_SIZE / MINIBATCH_SIZE == BATCH_SIZE // MINIBATCH_SIZE
@@ -30,8 +31,13 @@ def get_loss_and_accuracy(model, dl, criterion=None):
     total_accuracy = []
     total_loss = []
     for sample in dl:
-        input = sample["keypoints"].to(DEVICE)
+        input_pose = sample["pose"].to(DEVICE)
+        input_face = sample["face"].to(DEVICE)
+        input_lh = sample["lh"].to(DEVICE)
+        input_rh = sample["rh"].to(DEVICE)
+        input = torch.cat([input_pose, input_face, input_lh, input_rh], dim=-1)
         label = sample["label"].to(DEVICE)
+
         output = model(input)
 
         if criterion:
@@ -52,7 +58,7 @@ def get_loss_and_accuracy(model, dl, criterion=None):
 
 
 # Jitter is applied as [-jitter / 2, jitter / 2]
-augmentation = AugmentationV1(
+augmentation = AugmentationV2(
     [
         Transform((0.5, 0.5, 0.25)),
         Flip(0.5, 0.2),
@@ -60,54 +66,70 @@ augmentation = AugmentationV1(
     ]
 )
 
+fields_to_pad = [
+    "pose",
+    "face",
+    "lh",
+    "rh",
+    "pose_mean",
+    "face_mean",
+    "lh_mean",
+    "rh_mean",
+]
+
 
 # Make sure all examples have the same number of keypoints
 # Pad the keypoints with the last frame until it reaches the max length
 def pad_transform(examples):
-    max_len = max([len(kp) for kp in examples["keypoints"]])
+    for sample_idx in range(len(examples["keypoints_length"])):
+        curr_len = examples["keypoints_length"][sample_idx]
+        missing = SEQUENCE_LENGTH - curr_len
+        start_idx = 0
 
-    pad_value = torch.zeros(1, 1662)
-    for idx, frame in enumerate(examples["keypoints"]):
-        missing = max_len - len(frame)
-        frame = torch.tensor(frame)
-        if missing > 0:
-            frame = torch.concat(
-                [
-                    pad_value.repeat(missing, 1),
-                    frame,
-                ]
-            )
+        if missing < 0:
+            max_idx = curr_len - SEQUENCE_LENGTH
+            start_idx = torch.randint(0, max_idx, (1,)).item()
 
-        examples["keypoints"][idx] = frame
+        for field in fields_to_pad:
+            field_value = torch.tensor(examples[field][sample_idx])
+
+            if missing > 0:
+                field_value = torch.concat(
+                    [torch.zeros(missing, len(field_value[0])), field_value]
+                )
+            elif missing < 0:
+                field_value = field_value[start_idx : start_idx + SEQUENCE_LENGTH]
+
+            examples[field][sample_idx] = field_value
 
     return examples
 
 
 def augment_and_pad_transform(examples):
-    max_len = max([len(kp) for kp in examples["keypoints"]])
+    examples = pad_transform(examples)
 
-    pad_value = torch.zeros(1, 1662)
-    for idx, frame in enumerate(examples["keypoints"]):
-        # Apply augmentation
-        frame = augmentation(torch.tensor(frame))
+    for sample_idx in range(len(examples["keypoints_length"])):
+        pose = examples["pose"][sample_idx]
+        face = examples["face"][sample_idx]
+        lh = examples["lh"][sample_idx]
+        rh = examples["rh"][sample_idx]
 
-        # Pad the frame with zeros at the beginning
-        missing = max_len - len(frame)
-        if missing > 0:
-            frame = torch.concat(
-                [
-                    pad_value.repeat(missing, 1),
-                    frame,
-                ]
-            )
+        pose, face, lh, rh = augmentation(pose, face, lh, rh)
 
-        examples["keypoints"][idx] = frame
+        examples["pose"][sample_idx] = pose
+        examples["face"][sample_idx] = face
+        examples["lh"][sample_idx] = lh
+        examples["rh"][sample_idx] = rh
 
     return examples
 
 
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
+    # label_feature = ds["train"].features["label"]
+    # idle_idx = label_feature.str2int("IDLE")
+    # ds = ds.filter(lambda example: example["label"] != idle_idx)
+
     print(ds)
     ds = ds.with_format("torch")
     ds["train"].set_transform(augment_and_pad_transform)
@@ -116,6 +138,7 @@ if __name__ == "__main__":
     model_config = DeepSignConfigV2(
         num_label=len(ds["train"].features["label"].names),
         lstm_size=256,
+        lstm_layers=1,
         linear_size=128,
     )
     model = DeepSignV2(model_config).to(DEVICE)
@@ -128,13 +151,13 @@ if __name__ == "__main__":
         batch_size=MINIBATCH_SIZE,
         persistent_workers=True,
     )
-    train_dl = DataLoader(ds["train"], num_workers=8, **dl_params)
+    train_dl = DataLoader(ds["train"], num_workers=10, **dl_params)
     test_dl = DataLoader(ds["test"], num_workers=2, **dl_params)
 
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes="fresh-sky-43 with augmentation",
+        notes="fresh-sky-43 with generate_v3 with sequence length of 15 and augmentation",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
@@ -159,7 +182,11 @@ if __name__ == "__main__":
 
         # TRAIN LOOP
         for sample in train_dl:
-            input = sample["keypoints"].to(DEVICE)
+            input_pose = sample["pose"].to(DEVICE)
+            input_face = sample["face"].to(DEVICE)
+            input_lh = sample["lh"].to(DEVICE)
+            input_rh = sample["rh"].to(DEVICE)
+            input = torch.cat([input_pose, input_face, input_lh, input_rh], dim=-1)
             label = sample["label"].to(DEVICE)
 
             output = model(input)

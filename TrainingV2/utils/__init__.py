@@ -46,4 +46,50 @@ def extract_keypoints(results):
     face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
     lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3)
     rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3)
-    return np.concatenate([pose, face, lh, rh])
+    return np.concatenate([pose, face, lh, rh], dtype=np.float32)
+
+def extract_keypoints_v2(results):
+    pose = np.array([[res.x, res.y, res.z, res.visibility] for res in results.pose_landmarks.landmark]).flatten() if results.pose_landmarks else np.zeros(33*4)
+    face = np.array([[res.x, res.y, res.z] for res in results.face_landmarks.landmark]).flatten() if results.face_landmarks else np.zeros(468*3)
+    lh = np.array([[res.x, res.y, res.z] for res in results.left_hand_landmarks.landmark]).flatten() if results.left_hand_landmarks else np.zeros(21*3)
+    rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3)
+
+    pose_mean_x = np.mean(pose[0::4])
+    pose_mean_y = np.mean(pose[1::4])
+    pose_mean_z = np.mean(pose[2::4])
+    pose_mean_visibility = np.mean(pose[3::4])
+    face_mean_x = np.mean(face[0::3])
+    face_mean_y = np.mean(face[1::3])
+    face_mean_z = np.mean(face[2::3])
+    lh_mean_x = np.mean(lh[0::3])
+    lh_mean_y = np.mean(lh[1::3])
+    lh_mean_z = np.mean(lh[2::3])
+    rh_mean_x = np.mean(rh[0::3])
+    rh_mean_y = np.mean(rh[1::3])
+    rh_mean_z = np.mean(rh[2::3])
+
+    pose[0::4] = pose[0::4] - pose_mean_x
+    pose[1::4] = pose[1::4] - pose_mean_y
+    pose[2::4] = pose[2::4] - pose_mean_z
+    pose[3::4] = pose[3::4] - pose_mean_visibility
+    face[0::3] = face[0::3] - face_mean_x
+    face[1::3] = face[1::3] - face_mean_y
+    face[2::3] = face[2::3] - face_mean_z
+    lh[0::3] = lh[0::3] - lh_mean_x
+    lh[1::3] = lh[1::3] - lh_mean_y
+    lh[2::3] = lh[2::3] - lh_mean_z
+    rh[0::3] = rh[0::3] - rh_mean_x
+    rh[1::3] = rh[1::3] - rh_mean_y
+    rh[2::3] = rh[2::3] - rh_mean_z
+    
+     
+    return (
+        pose.astype(np.float32),
+        face.astype(np.float32),
+        lh.astype(np.float32),
+        rh.astype(np.float32),
+        np.array([pose_mean_x, pose_mean_y, pose_mean_z, pose_mean_visibility], dtype=np.float32),
+        np.array([face_mean_x, face_mean_y, face_mean_z], dtype=np.float32),
+        np.array([lh_mean_x, lh_mean_y, lh_mean_z], dtype=np.float32),
+        np.array([rh_mean_x, rh_mean_y, rh_mean_z], dtype=np.float32),
+    )
