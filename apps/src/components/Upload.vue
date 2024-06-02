@@ -1,0 +1,3 @@
+<template>
+  Upload Component
+</template>

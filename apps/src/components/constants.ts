@@ -1,7 +1,7 @@
 export const ACTIONS = ['hello', 'thanks', 'iloveyou', 'idle']
 export const MENU = [
   {
-    key: 'gesture',
+    key: 'gestures',
     header: 'Gestures',
     subheader: 'Category',
     icon: 'waving_hand',

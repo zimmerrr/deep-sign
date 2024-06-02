@@ -1,0 +1,3 @@
+<template>
+  Settings Component
+</template>

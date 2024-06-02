@@ -1,0 +1,3 @@
+<template>
+  Gestures component
+</template>
