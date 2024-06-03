@@ -55,15 +55,21 @@ class Flip(AugmentationFn):
         self,
         horizontal=0.5,
         vertical=0.5,
+        offset=(0.5, 0.5),
         p=0.5,
     ):
         self.horizontal = horizontal
         self.vertical = vertical
-        self.offset = torch.tensor([0.5, 0.5])
+        self.offset = torch.tensor(offset)
         self.p = p
 
     def get_params(self):
-        return dict(horizontal=self.horizontal, vertical=self.vertical, p=self.p)
+        return dict(
+            horizontal=self.horizontal,
+            vertical=self.vertical,
+            offset=self.offset,
+            p=self.p,
+        )
 
     def _apply(self, data, interleave, flip):
         offset = self.offset
@@ -96,6 +102,12 @@ class Flip(AugmentationFn):
             face = self._apply(face, 3, self._flip)
             lh = self._apply(lh, 3, self._flip)
             rh = self._apply(rh, 3, self._flip)
+
+            if self._flip[0] == -1:
+                temp = lh
+                lh = rh
+                rh = temp
+
         return pose, face, lh, rh
 
 
@@ -141,6 +153,41 @@ class Scale(AugmentationFn):
         return pose, face, lh, rh
 
 
+class Rotate(AugmentationFn):
+    def __init__(
+        self,
+        jitter=10,
+        p=0.5,
+    ):
+        self.jitter = torch.tensor(jitter)
+        self.jitter_half = self.jitter / 2
+        self.p = p
+
+    def get_params(self):
+        return dict(jitter=self.jitter.numpy(), p=self.p)
+
+    def _apply(self, data, interleave, jitter):
+        rot_mat = torch.eye(interleave)
+        rot_mat[0, 0] = torch.cos(jitter)
+        rot_mat[0, 1] = -torch.sin(jitter)
+        rot_mat[1, 0] = torch.sin(jitter)
+        rot_mat[1, 1] = torch.cos(jitter)
+
+        data = torch.matmul(data.view(-1, interleave), rot_mat)
+        return data.view(-1)
+
+    def generate_vars(self):
+        self._jitter = torch.deg2rad((torch.rand(1) * self.jitter) - self.jitter_half)
+        self._should_apply = torch.rand(1) < self.p
+
+    def __call__(self, pose, face, lh, rh, force=False):
+        if force or self._should_apply:
+            pose = self._apply(pose, 4, self._jitter)
+            lh = self._apply(lh, 3, self._jitter)
+            rh = self._apply(rh, 3, self._jitter)
+        return pose, face, lh, rh
+
+
 if __name__ == "__main__":
     transform_input = torch.tensor([0.1, 0.2, 0.3, 0.4])
     transform_expected = torch.tensor([0.2, 0.3, 0.4, 0.4])
@@ -161,3 +208,9 @@ if __name__ == "__main__":
     scale = Scale()
     scale_output = scale._apply(scale_input, 3, torch.tensor([2, 2, 2]))
     assert torch.allclose(scale_output, scale_expected)
+
+    rotate_input = torch.tensor([1, 0, 1], dtype=torch.float32)
+    rotate_expected = torch.tensor([0, -1, 1], dtype=torch.float32)
+    rotate = Rotate()
+    rotate_output = rotate._apply(rotate_input, 3, torch.deg2rad(torch.tensor(90)))
+    assert torch.allclose(rotate_output, rotate_expected, atol=1e-4)

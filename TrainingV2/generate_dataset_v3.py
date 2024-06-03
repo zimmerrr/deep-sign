@@ -4,7 +4,7 @@ import cv2
 from datasets import Dataset
 import os
 import glob
-from datasets import load_from_disk, Array2D
+from datasets import load_from_disk, Array2D, concatenate_datasets
 from datasets import DatasetDict
 import mediapipe as mp
 from utils import mediapipe_detection, extract_keypoints_v2
@@ -12,10 +12,10 @@ from utils import mediapipe_detection, extract_keypoints_v2
 mp_holistic = mp.solutions.holistic
 
 DATASET_NAME = "fsl-105"
-DATASET_VERSION = "v3"
+DATASET_VERSION = "v4"
 DATA_PATH = os.path.join(f"../Dataset/{DATASET_NAME}")
-NUM_PROC = max(int(os.cpu_count() * 0.5), 1)
-TARGET_FPS = 15
+NUM_PROC = max(int(os.cpu_count() * 0.20), 1)
+TARGET_FPS = 30
 
 
 def get_files(examples):
@@ -38,7 +38,7 @@ def get_files(examples):
     return new_examples
 
 
-def get_keypoints(examples):
+def get_keypoints(examples, flip_horizontal=False):
     new_examples = {
         "id": [],
         "label": [],
@@ -80,6 +80,9 @@ def get_keypoints(examples):
                     continue
                 if not ret:
                     break
+
+                if flip_horizontal:
+                    frame = cv2.flip(frame, 1)
 
                 image, results = mediapipe_detection(frame, holistic)
 
@@ -191,12 +194,20 @@ if __name__ == "__main__":
 
         # PROCESSING
         ds = ds.map(get_files, batched=True, batch_size=100)
-        ds = ds.map(
+        ds_non_flipped = ds.map(
             get_keypoints,
             batched=True,
             batch_size=15,
             num_proc=NUM_PROC,
         )
+        ds_flipped = ds.map(
+            get_keypoints,
+            batched=True,
+            batch_size=15,
+            fn_kwargs={"flip_horizontal": True},
+            num_proc=NUM_PROC,
+        )
+        ds = concatenate_datasets([ds_non_flipped, ds_flipped])
         ds = ds.cast_column("pose", Array2D(shape=(None, 33 * 4), dtype="float32"))
         ds = ds.cast_column("face", Array2D(shape=(None, 468 * 3), dtype="float32"))
         ds = ds.cast_column("lh", Array2D(shape=(None, 21 * 3), dtype="float32"))
@@ -206,11 +217,12 @@ if __name__ == "__main__":
 
         # Limit the number of samples per label to average label count
         label_ctr = Counter(ds["label"]).most_common()
-        label_ctr_avg = sum([x[1] for x in label_ctr]) // len(label_ctr)
+        # label_ctr_avg = sum([x[1] for x in label_ctr]) // len(label_ctr)
+        label_ctr_max = max([x[1] for x in label_ctr])
         ds = ds.filter(
             filter_max_count,
             batched=True,
-            fn_kwargs={"max_samples": label_ctr_avg * 2},
+            fn_kwargs={"max_samples": label_ctr_max},
         )
 
         ds.save_to_disk(f"../datasets_cache/v3-{output_name}-raw")

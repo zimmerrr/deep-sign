@@ -17,33 +17,40 @@ class DeepSignConfigV3:
 class DeepSignV3(nn.Module):
     def __init__(self, config: DeepSignConfigV3):
         super(DeepSignV3, self).__init__()
-        self.lstm1 = nn.LSTM(
+        self.config = config
+        self.rnn = nn.GRU(
             config.input_size,
             config.lstm_size,
             config.lstm_layers,
             batch_first=True,
-            dropout=config.dropout,
         )
-        # self.lstm2 = nn.LSTM(config.lstm1_size, config.lstm2_size, batch_first=True)
-        # self.lstm3 = nn.LSTM(config.lstm2_size, config.lstm3_size, batch_first=True)
+        self.lstm_dropout = nn.Dropout(config.dropout)
         self.linear1 = nn.Linear(
-            config.lstm_layers * config.lstm_size,
-            config.lstm_layers * config.linear_size,
+            config.lstm_size,
+            config.linear_size,
         )
         self.dropout = nn.Dropout(config.dropout)
         self.linear2 = nn.Linear(
-            config.lstm_layers * config.linear_size,
+            config.linear_size,
             config.num_label,
         )
+        self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, input):
-        batch_size = input.shape[0]
-        output, (hn, cn) = self.lstm1(input)
-        output = self.linear1(hn.view((batch_size, -1)))
+    def forward(self, input, target=None):
+        output, _ = self.rnn(input)
+        output = self.lstm_dropout(output[:, -1:, :])
+        output = self.linear1(output)
         output = self.dropout(output)
         output = self.linear2(output)
 
-        return output
+        loss = None
+        if target is not None:
+            loss = self.criterion(
+                output.view(-1, self.config.num_label),
+                target[:, -1].view(-1),
+            )
+
+        return output, loss
 
     def get_num_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)

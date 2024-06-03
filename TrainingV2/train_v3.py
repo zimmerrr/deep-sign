@@ -1,6 +1,7 @@
 import time
-from model.deepsign_v2 import DeepSignV2, DeepSignConfigV2
-from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale
+from model.deepsign_v3 import DeepSignV3, DeepSignConfigV3
+from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale, Rotate
+from utils import get_hand_angles, get_pose_angles
 from datasets import load_from_disk
 import torch
 import torch.nn as nn
@@ -9,6 +10,7 @@ import tqdm
 from torch.utils.data import DataLoader
 import wandb
 import os
+import numpy as np
 
 os.environ["WANDB_API_KEY"] = "7204bcf714a2bd747d4d973bc999fbc86df91649"
 
@@ -17,42 +19,55 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATASET_NAME = "v3-fsl-105-v3"
 NUM_EPOCH = 2000
 LEARNING_RATE = 0.001
+GESTURE_LENGTH = 4
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
-SEQUENCE_LENGTH = 15
+# SEQUENCE_LENGTH = 30
+ENABLE_AUGMENTATION = False
 
 # Make sure the batch size is divisible by the mini-batch size
 assert BATCH_SIZE / MINIBATCH_SIZE == BATCH_SIZE // MINIBATCH_SIZE
 
 
 @torch.no_grad()
-def get_loss_and_accuracy(model, dl, criterion=None):
+def get_loss_and_accuracy(model, dl):
     model.eval()
     total_accuracy = []
     total_loss = []
     for sample in dl:
         input_pose = sample["pose"].to(DEVICE)
-        input_face = sample["face"].to(DEVICE)
+        # input_face = sample["face"].to(DEVICE)
         input_lh = sample["lh"].to(DEVICE)
         input_rh = sample["rh"].to(DEVICE)
-        input = torch.cat([input_pose, input_face, input_lh, input_rh], dim=-1)
+        input_pose_angles = sample["pose_angles"].to(DEVICE)
+        input_lh_angles = sample["lh_angles"].to(DEVICE)
+        input_rh_angles = sample["rh_angles"].to(DEVICE)
+        input = torch.cat(
+            [
+                input_pose,
+                input_pose_angles,
+                input_lh,
+                input_lh_angles,
+                input_rh,
+                input_rh_angles,
+            ],
+            dim=-1,
+        )
         label = sample["label"].to(DEVICE)
 
-        output = model(input)
-
-        if criterion:
-            loss = criterion(output, label)
-            total_loss.append(loss.item())
+        output, loss = model(input, label)
+        total_loss.append(loss.item())
 
         output = F.softmax(output)
         output = output.argmax(-1)
 
+        label = label[:, -1]  # only compare the last label
         total_correct = torch.sum(output == label)
-        total_samples = len(label)
+        total_samples = torch.sum(label >= 0)
         accuracy = total_correct / total_samples
         total_accuracy.append(accuracy.item())
 
-    avg_loss = sum(total_loss) / len(total_loss) if criterion else 0
+    avg_loss = sum(total_loss) / len(total_loss)
     avg_accuracy = sum(total_accuracy) / len(total_accuracy)
     return avg_loss, avg_accuracy
 
@@ -60,9 +75,10 @@ def get_loss_and_accuracy(model, dl, criterion=None):
 # Jitter is applied as [-jitter / 2, jitter / 2]
 augmentation = AugmentationV2(
     [
-        Transform((0.5, 0.5, 0.25)),
-        Flip(0.5, 0.2),
+        Rotate(10),
+        Flip(0.5, 0.2, (0, 0)),
         Scale((0.5, 0.5, 0.25)),
+        Transform((0.5, 0.5, 0.25)),
     ]
 )
 
@@ -75,32 +91,84 @@ fields_to_pad = [
     "face_mean",
     "lh_mean",
     "rh_mean",
+    "pose_angles",
+    "lh_angles",
+    "rh_angles",
+    "label",
 ]
+
+
+def concat_gestures_transform(examples):
+    new_examples = {k: [] for k in fields_to_pad}
+    new_examples["keypoints_length"] = []
+    new_examples["label"] = []
+    new_examples["pose_angles"] = []
+    new_examples["lh_angles"] = []
+    new_examples["rh_angles"] = []
+
+    for sample_idx in range(0, len(examples["keypoints_length"]), GESTURE_LENGTH):
+        keypoints_length = 0
+        label = []
+
+        for field in fields_to_pad:
+            if field == "label":
+                continue
+
+            field_value = []
+            for i in range(GESTURE_LENGTH):
+                field_value.extend(examples[field][sample_idx + i])
+            new_examples[field].append(field_value)
+
+        for i in range(GESTURE_LENGTH):
+            current_length = examples["keypoints_length"][sample_idx + i]
+            keypoints_length += current_length
+            label.extend([examples["label"][sample_idx + i]] * current_length)
+
+        new_examples["keypoints_length"].append(keypoints_length)
+        new_examples["label"].append(label)
+
+    return new_examples
 
 
 # Make sure all examples have the same number of keypoints
 # Pad the keypoints with the last frame until it reaches the max length
 def pad_transform(examples):
+    examples = concat_gestures_transform(examples)
+
+    max_len = max(examples["keypoints_length"])
+    examples["pad_count"] = []
+
     for sample_idx in range(len(examples["keypoints_length"])):
         curr_len = examples["keypoints_length"][sample_idx]
-        missing = SEQUENCE_LENGTH - curr_len
-        start_idx = 0
+        missing = max_len - curr_len
+        # start_idx = 0
 
-        if missing < 0:
-            max_idx = curr_len - SEQUENCE_LENGTH
-            start_idx = torch.randint(0, max_idx, (1,)).item()
+        pad_count = max(missing, 0)
+        examples["pad_count"].append(pad_count)
+
+        # if missing < 0:
+        #     max_idx = curr_len - max_len
+        #     start_idx = torch.randint(0, max_idx, (1,)).item()
 
         for field in fields_to_pad:
             field_value = torch.tensor(examples[field][sample_idx])
 
             if missing > 0:
-                field_value = torch.concat(
-                    [torch.zeros(missing, len(field_value[0])), field_value]
-                )
-            elif missing < 0:
-                field_value = field_value[start_idx : start_idx + SEQUENCE_LENGTH]
+                if field == "label":
+                    field_value = torch.concat(
+                        [torch.empty(missing, dtype=torch.int).fill_(-100), field_value]
+                    )
+                else:
+                    field_value = torch.concat(
+                        [torch.zeros(missing, len(field_value[0])), field_value]
+                    )
+            # elif missing < 0:
+            #     field_value = field_value[start_idx : start_idx + max_len]
 
             examples[field][sample_idx] = field_value
+
+        # label = torch.tensor([examples["label"][sample_idx]]).repeat(5)
+        # examples["label"][sample_idx] = label
 
     return examples
 
@@ -113,8 +181,16 @@ def augment_and_pad_transform(examples):
         face = examples["face"][sample_idx]
         lh = examples["lh"][sample_idx]
         rh = examples["rh"][sample_idx]
+        pad_count = examples["pad_count"][sample_idx]
 
-        pose, face, lh, rh = augmentation(pose, face, lh, rh)
+        pose[pad_count:], face[pad_count:], lh[pad_count:], rh[pad_count:] = (
+            augmentation(
+                pose[pad_count:],
+                face[pad_count:],
+                lh[pad_count:],
+                rh[pad_count:],
+            )
+        )
 
         examples["pose"][sample_idx] = pose
         examples["face"][sample_idx] = face
@@ -124,55 +200,89 @@ def augment_and_pad_transform(examples):
     return examples
 
 
+def compute_angles(examples):
+    pose_angles = []
+    lh_angles = []
+    rh_angles = []
+
+    for pose in examples["pose"]:
+        pose_angles.append(np.array([get_pose_angles(kp) for kp in pose]))
+
+    for lh in examples["lh"]:
+        lh_angles.append(np.array([get_hand_angles(kp) for kp in lh]))
+
+    for rh in examples["rh"]:
+        rh_angles.append(np.array([get_hand_angles(kp) for kp in rh]))
+
+    return dict(
+        pose_angles=pose_angles,
+        lh_angles=lh_angles,
+        rh_angles=rh_angles,
+    )
+
+
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
-    # label_feature = ds["train"].features["label"]
+    ds = ds.map(compute_angles, batched=True)
+    label_feature = ds["train"].features["label"]
     # idle_idx = label_feature.str2int("IDLE")
     # ds = ds.filter(lambda example: example["label"] != idle_idx)
 
     print(ds)
+    print(augmentation)
+
     ds = ds.with_format("torch")
-    ds["train"].set_transform(augment_and_pad_transform)
+    ds["train"].set_transform(
+        augment_and_pad_transform if ENABLE_AUGMENTATION else pad_transform
+    )
     ds["test"].set_transform(pad_transform)
 
-    model_config = DeepSignConfigV2(
-        num_label=len(ds["train"].features["label"].names),
-        lstm_size=256,
-        lstm_layers=1,
+    model_config = DeepSignConfigV3(
+        input_size=(33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15),
+        num_label=len(label_feature.names),
+        lstm_size=128,
+        lstm_layers=2,
         linear_size=128,
     )
-    model = DeepSignV2(model_config).to(DEVICE)
+    model = DeepSignV3(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
 
-    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
     dl_params = dict(
-        batch_size=MINIBATCH_SIZE,
+        batch_size=MINIBATCH_SIZE * GESTURE_LENGTH,
         persistent_workers=True,
+        shuffle=True,
+        drop_last=True,
     )
     train_dl = DataLoader(ds["train"], num_workers=10, **dl_params)
     test_dl = DataLoader(ds["test"], num_workers=2, **dl_params)
 
+    tags = [DATASET_NAME, "deepsign_v2", "fp32", "no_face"]
+    if ENABLE_AUGMENTATION:
+        tags.append("augmentation_v2")
+
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes="fresh-sky-43 with generate_v3 with sequence length of 15 and augmentation",
+        notes="northern-energy-80 w/ GRU, predict 4 gesture, no face, with pose & hand angles",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
             "num_epoch": NUM_EPOCH,
             "lr": LEARNING_RATE,
             "model_config": model_config,
-            "loss_fn": criterion.__class__.__name__,
+            "loss_fn": model.criterion.__class__.__name__,
             "optimizer": optimizer.__class__.__name__,
             "train_count": ds["train"],
             "test_count": ds["test"],
             "train_batch_count": len(train_dl),
             "test_batch_count": len(test_dl),
-            "augmentation": str(augmentation),
+            "augmentation": str(augmentation) if ENABLE_AUGMENTATION else "None",
+            "num_params": model.get_num_parameters(),
+            "gesture_len": GESTURE_LENGTH,
         },
-        tags=[DATASET_NAME, "deepsign_v2", "fp32", "augmentation_v1"],
+        tags=tags,
     )
 
     best_acc = 0
@@ -183,14 +293,26 @@ if __name__ == "__main__":
         # TRAIN LOOP
         for sample in train_dl:
             input_pose = sample["pose"].to(DEVICE)
-            input_face = sample["face"].to(DEVICE)
+            # input_face = sample["face"].to(DEVICE)
             input_lh = sample["lh"].to(DEVICE)
             input_rh = sample["rh"].to(DEVICE)
-            input = torch.cat([input_pose, input_face, input_lh, input_rh], dim=-1)
+            input_pose_angles = sample["pose_angles"].to(DEVICE)
+            input_lh_angles = sample["lh_angles"].to(DEVICE)
+            input_rh_angles = sample["rh_angles"].to(DEVICE)
+            input = torch.cat(
+                [
+                    input_pose,
+                    input_pose_angles,
+                    input_lh,
+                    input_lh_angles,
+                    input_rh,
+                    input_rh_angles,
+                ],
+                dim=-1,
+            )
             label = sample["label"].to(DEVICE)
 
-            output = model(input)
-            loss = criterion(output, label)
+            output, loss = model(input, label)
 
             # Accomodate mini-batch size in the loss
             loss = loss / (BATCH_SIZE / MINIBATCH_SIZE)
@@ -202,8 +324,8 @@ if __name__ == "__main__":
 
         # TEST LOOP
         if (epoch + 1) % 10 == 0:
-            train_loss, train_acc = get_loss_and_accuracy(model, train_dl, criterion)
-            test_loss, test_acc = get_loss_and_accuracy(model, test_dl, criterion)
+            train_loss, train_acc = get_loss_and_accuracy(model, train_dl)
+            test_loss, test_acc = get_loss_and_accuracy(model, test_dl)
 
             data = {
                 "train_loss": train_loss,

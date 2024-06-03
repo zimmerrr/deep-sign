@@ -3,13 +3,14 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import torch.nn.functional as F
-from model.deepsign_v2 import DeepSignV2
+from model.deepsign_v3 import DeepSignV3
 import torch
 from datasets import load_from_disk, ClassLabel
-from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints_v2
+from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints_v3
 
 
 def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
+    labels.names
     row = 1
     probs, label_indices = prediction.topk(5)
     for prob, label_idx in zip(probs.numpy(), label_indices.numpy()):
@@ -40,26 +41,30 @@ mp_holistic = mp.solutions.holistic
 mp_drawing = mp.solutions.drawing_utils
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-RUN_NAME = "pleasant-glitter-57"
+RUN_NAME = "summer-thunder-101"
 DATASET_NAME = "v3-fsl-105-v3"
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
-sequence = []
+max_sequence = 60
+input_size = (33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15)  # constant
+sequence = [np.zeros(input_size) for _ in range(max_sequence)]
 sentence = []
 predictions = []
 threshold = 0.5
-max_sequence = 30
 
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
     print("Labels:", ds["train"].features["label"].names)
 
     checkpoint = torch.load(checkpoint_path)
-    model = DeepSignV2(checkpoint["config"]).to(DEVICE)
+    model = DeepSignV3(checkpoint["config"]).to(DEVICE)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+
     # Set mediapipe model
     with mp_holistic.Holistic(
         min_detection_confidence=0.5, min_tracking_confidence=0.5
@@ -75,14 +80,26 @@ if __name__ == "__main__":
             draw_styled_landmarks(image, results)
 
             # 2. Prediction logic
-            keypoints = extract_keypoints_v2(results)
-            sequence.append(np.concatenate(keypoints[0:4]))
+            keypoints = extract_keypoints_v3(results)
+            sequence.append(
+                np.concatenate(
+                    [
+                        keypoints["pose"],
+                        keypoints["pose_angles"],
+                        # keypoints["face"],
+                        keypoints["lh"],
+                        keypoints["lh_angles"],
+                        keypoints["rh"],
+                        keypoints["rh_angles"],
+                    ]
+                )
+            )
             sequence = sequence[-max_sequence:]
 
             if len(sequence) == max_sequence:
                 input = torch.tensor([sequence], dtype=torch.float32).to(DEVICE)
-                output = model(input)
-                output = F.softmax(output).cpu().detach()
+                output, _ = model(input)
+                output = F.softmax(output[:, -1, :]).cpu().detach()
 
                 # 3. Viz logic
                 image = prob_viz(output[0], ds["train"].features["label"], image)

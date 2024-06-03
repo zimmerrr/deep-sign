@@ -1,6 +1,12 @@
 from typing import List
 import torch
-from augmentations.augmentation_fn_v1 import AugmentationFn, Flip, Transform, Scale
+from augmentations.augmentation_fn_v1 import (
+    AugmentationFn,
+    Flip,
+    Transform,
+    Scale,
+    Rotate,
+)
 
 
 class AugmentationV2:
@@ -32,7 +38,7 @@ class AugmentationV2:
 
 
 if __name__ == "__main__":
-    augmentation = AugmentationV2([Transform(), Flip(), Scale()])
+    augmentation = AugmentationV2([Rotate(), Flip(), Scale(), Transform()])
     augmentation(
         torch.rand((33 * 4)),
         torch.rand((468 * 3)),
