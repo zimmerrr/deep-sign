@@ -3,13 +3,16 @@
     :padding="$q.screen.width > $q.screen.height"
     class="flex flex-center items-stretch"
   >
-    <q-card class="content-center page-card">
-      <Header
-        :header="header"
-        :subheader="subheader"
-      />
+    <q-card class="page-card">
+      <q-card-section class="header">
+        <Header
+          :header="header"
+          :subheader="subheader"
+        />
+      </q-card-section>
+
       <q-card-section>
-        <div class="content-center container q-py-md full-height">
+        <div class="container q-py-md full-height">
           <EventLogo :with-hash-tag="true" />
           <div
             v-if="menu"
@@ -90,6 +93,9 @@ function setMode(newMode: Mode) {
   background: linear-gradient(180deg, rgba(12,104,243,1) 15%, rgba(76,213,189,1) 91%)
   max-width: 550px
   width: 100%
+
+.header
+  height: 8vh
 
 @media (max-width: 1024px)
   .page-card

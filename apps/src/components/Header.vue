@@ -1,5 +1,5 @@
 <template>
-  <div class="header-container full-width absolute-top">
+  <div class="full-width absolute-top">
     <div class="row text-white">
       <div class="col-9">
         <div class="text-h5 text-weight-bold q-ma-md">
@@ -35,8 +35,6 @@ const props = defineProps({
 </script>
 
 <style lang="sass" scoped>
-.header-container
-  height: 10vh
 
 .logo
   width: 100px !important
