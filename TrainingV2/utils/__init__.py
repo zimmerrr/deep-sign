@@ -177,15 +177,13 @@ def extract_keypoints_v2(results):
 
 
 def normalize_keypoints(data, interleave):
-    mean_x = np.mean(data[0::interleave])
-    mean_y = np.mean(data[1::interleave])
-    mean_z = np.mean(data[2::interleave])
-
-    data[0::interleave] = data[0::interleave] - mean_x
-    data[1::interleave] = data[1::interleave] - mean_y
-    data[2::interleave] = data[2::interleave] - mean_z
-
-    return data.astype(np.float32), np.array([mean_x, mean_y, mean_z], dtype=np.float32)
+    means = []
+    for i in range(interleave):
+        mean = np.mean(data[i::interleave])
+        means.append(mean)
+        data[i::interleave] = data[i::interleave] - mean
+        
+    return data.astype(np.float32), np.array(means, dtype=np.float32)
 
 
 # Reference: https://github.com/kairess/gesture-recognition/blob/master/create_dataset.py
@@ -202,8 +200,14 @@ def get_angles(data, interleave, parent_indices, child_indices, vec_a, vec_b):
     v = v / np.linalg.norm(v, axis=1)[:, np.newaxis]
 
     # Get angle using arcos of dot product
-    angles = np.arccos(np.einsum("nt,nt->n", v[vec_a, :], v[vec_b, :]))
+    v_dot = np.einsum("nt,nt->n", v[vec_a, :], v[vec_b, :])
+    v_dot = np.clip(v_dot, -1.0, 1.0)
+    angles = np.arccos(v_dot)
     angles = np.degrees(angles)
+
+    if np.isnan(angles).any():
+        print("NaN detected", v_dot)
+        return np.zeros(len(vec_a), dtype=np.float32)
 
     return angles
 

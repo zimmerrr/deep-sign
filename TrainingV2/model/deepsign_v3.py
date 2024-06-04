@@ -11,7 +11,9 @@ class DeepSignConfigV3:
     lstm_layers: int = 3
     lstm_size: int = 64
     linear_size: int = 960
-    dropout = 0.2
+    dropout: float = 0.2
+    bidirectional: bool = False
+    loss_whole_sequence: bool = False
 
 
 class DeepSignV3(nn.Module):
@@ -23,10 +25,11 @@ class DeepSignV3(nn.Module):
             config.lstm_size,
             config.lstm_layers,
             batch_first=True,
+            bidirectional=config.bidirectional,
         )
         self.lstm_dropout = nn.Dropout(config.dropout)
         self.linear1 = nn.Linear(
-            config.lstm_size,
+            config.lstm_size * 2 if config.bidirectional else config.lstm_size,
             config.linear_size,
         )
         self.dropout = nn.Dropout(config.dropout)
@@ -38,16 +41,21 @@ class DeepSignV3(nn.Module):
 
     def forward(self, input, target=None):
         output, _ = self.rnn(input)
-        output = self.lstm_dropout(output[:, -1:, :])
+        output = self.lstm_dropout(output)
         output = self.linear1(output)
         output = self.dropout(output)
         output = self.linear2(output)
+
+        if not self.config.loss_whole_sequence:
+            output = output[:, -1:, :]
+            if target is not None:
+                target = target[:, -1:]
 
         loss = None
         if target is not None:
             loss = self.criterion(
                 output.view(-1, self.config.num_label),
-                target[:, -1].view(-1),
+                target.view(-1),
             )
 
         return output, loss

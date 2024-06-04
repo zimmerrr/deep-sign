@@ -19,6 +19,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATASET_NAME = "v4-fsl-143-v1-v2-20fps-with-flipped"
 NUM_EPOCH = 2000
 LEARNING_RATE = 0.001
+LR_REDUCE_FACTOR = 0.5
+LR_REDUCE_PATIENCE = 5
 GESTURE_LENGTH = 4
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
@@ -43,19 +45,19 @@ def get_loss_and_accuracy(model, dl):
         input_pose_angles = sample["pose_angles"].to(DEVICE)
         input_lh_angles = sample["lh_angles"].to(DEVICE)
         input_rh_angles = sample["rh_angles"].to(DEVICE)
-        input_pose_mean = sample["pose_mean"].to(DEVICE)
-        input_lh_mean = sample["lh_mean"].to(DEVICE)
-        input_rh_mean = sample["rh_mean"].to(DEVICE)
+        # input_pose_mean = sample["pose_mean"].to(DEVICE)
+        # input_lh_mean = sample["lh_mean"].to(DEVICE)
+        # input_rh_mean = sample["rh_mean"].to(DEVICE)
         input = torch.cat(
             [
                 input_pose,
-                input_pose_mean,
+                # input_pose_mean,
                 input_pose_angles,
                 input_lh,
-                input_lh_mean,
+                # input_lh_mean,
                 input_lh_angles,
                 input_rh,
-                input_rh_mean,
+                # input_rh_mean,
                 input_rh_angles,
             ],
             dim=-1,
@@ -231,9 +233,25 @@ def compute_angles(examples):
     )
 
 
+def unnormalized_keypoints(example):
+    for field in ["pose", "lh", "rh"]:
+        field_value = np.array(example[field])
+        field_mean = np.array(example[f"{field}_mean"])
+
+        seq_len = len(field_value)
+        interleave = field_mean.shape[1]
+        field_value = field_value.reshape(seq_len, -1, interleave)
+        field_mean = np.expand_dims(field_mean, 1)
+
+        field_value = field_value + field_mean
+        example[field] = field_value.reshape(seq_len, -1)
+
+    return example
+
+
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
-    ds = ds.map(compute_angles, batched=True)
+    ds = ds.map(unnormalized_keypoints)
     label_feature = ds["train"].features["label"]
     # idle_idx = label_feature.str2int("IDLE")
     # ds = ds.filter(lambda example: example["label"] != idle_idx)
@@ -250,7 +268,8 @@ if __name__ == "__main__":
     ds["test"].set_transform(pad_transform)
 
     model_config = DeepSignConfigV3(
-        input_size=(33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3),
+        # input_size=(33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3),  # normalized input
+        input_size=(33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15),  # unnormalized input
         num_label=len(label_feature.names),
         lstm_size=96,
         lstm_layers=2,
@@ -262,6 +281,12 @@ if __name__ == "__main__":
     print("Number of parameters:", model.get_num_parameters())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        "min",
+        LR_REDUCE_FACTOR,
+        LR_REDUCE_PATIENCE,
+    )
 
     dl_params = dict(
         batch_size=MINIBATCH_SIZE * GESTURE_LENGTH,
@@ -272,14 +297,14 @@ if __name__ == "__main__":
     train_dl = DataLoader(ds["train"], num_workers=10, **dl_params)
     test_dl = DataLoader(ds["test"], num_workers=2, **dl_params)
 
-    tags = [DATASET_NAME, "deepsign_v3", "fp32", "no_face"]
+    tags = [DATASET_NAME, "deepsign_v3", "train_v4", "fp32", "no_face"]
     if ENABLE_AUGMENTATION:
         tags.append("augmentation_v2")
 
     wandb.init(
-        mode="disabled",
+        # mode="disabled",
         project="deep-sign-v2",
-        notes=f"golden-oath-121 loss&acc check last seq",
+        notes=f"deft-universe-122 w/ unnormalized data, ReduceLROnPlateau",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
@@ -314,19 +339,19 @@ if __name__ == "__main__":
             input_pose_angles = sample["pose_angles"].to(DEVICE)
             input_lh_angles = sample["lh_angles"].to(DEVICE)
             input_rh_angles = sample["rh_angles"].to(DEVICE)
-            input_pose_mean = sample["pose_mean"].to(DEVICE)
-            input_lh_mean = sample["lh_mean"].to(DEVICE)
-            input_rh_mean = sample["rh_mean"].to(DEVICE)
+            # input_pose_mean = sample["pose_mean"].to(DEVICE)
+            # input_lh_mean = sample["lh_mean"].to(DEVICE)
+            # input_rh_mean = sample["rh_mean"].to(DEVICE)
             input = torch.cat(
                 [
                     input_pose,
-                    input_pose_mean,
+                    # input_pose_mean,
                     input_pose_angles,
                     input_lh,
-                    input_lh_mean,
+                    # input_lh_mean,
                     input_lh_angles,
                     input_rh,
-                    input_rh_mean,
+                    # input_rh_mean,
                     input_rh_angles,
                 ],
                 dim=-1,
@@ -347,12 +372,14 @@ if __name__ == "__main__":
         if (epoch + 1) % 10 == 0:
             train_loss, train_acc = get_loss_and_accuracy(model, train_dl)
             test_loss, test_acc = get_loss_and_accuracy(model, test_dl)
+            scheduler.step(test_loss)
 
             data = {
                 "train_loss": train_loss,
                 "test_loss": test_loss,
                 "train_acc": train_acc,
                 "test_acc": test_acc,
+                "lr": optimizer.param_groups[0]["lr"],
             }
             pbar.set_postfix(**data)
             wandb.log(data, step=epoch)

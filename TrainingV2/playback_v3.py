@@ -3,7 +3,7 @@ import numpy as np
 from datasets import load_from_disk, concatenate_datasets
 from tqdm import tqdm
 
-DATASET_NAME = "v3-fsl-105-v3"
+DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
 WIDTH = 640
 HEIGHT = 360
 
@@ -98,9 +98,10 @@ if __name__ == "__main__":
             sample_idx = 0
             changed = False
             print(
-                f"Gesture: {gestures[gesture_idx]}, "
-                f"Sample: {sample_idx + 1}/{num_samples}, "
-                f"Frames: {len(filtered_ds[sample_idx]['pose'])}"
+                f"Gesture: {gestures[gesture_idx]}",
+                f"Sample: {sample_idx + 1}/{num_samples}",
+                f"Frames: {len(filtered_ds[sample_idx]['pose'])}",
+                f"File: {filtered_ds[sample_idx]['file']}",
             )
 
         sample = filtered_ds[sample_idx]
@@ -109,12 +110,19 @@ if __name__ == "__main__":
         # NEXT SAMPLE = d
         if last_key == 100:
             sample_idx = (sample_idx + 1) % num_samples
-            print(f"Sample: {sample_idx + 1}/{num_samples}, ")
+            print(
+                f"Sample: {sample_idx + 1}/{num_samples}",
+                f"File: {filtered_ds[sample_idx]['file']}",
+            )
             continue
         # PREVIOUS SAMPLE = a
         elif last_key == 97:
             sample_idx = (sample_idx + num_samples - 1) % num_samples
-            print(f"Sample: {sample_idx + 1}/{num_samples}, ")
+            print(
+                f"Sample: {sample_idx + 1}/{num_samples}",
+                f"Frames: {len(filtered_ds[sample_idx]['pose'])}",
+                f"File: {filtered_ds[sample_idx]['file']}",
+            )
             continue
 
         # NEXT GESTURE = w

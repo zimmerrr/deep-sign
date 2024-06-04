@@ -9,6 +9,23 @@ from datasets import load_from_disk, ClassLabel
 from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints_v3
 
 
+mp_holistic = mp.solutions.holistic
+mp_drawing = mp.solutions.drawing_utils
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+RUN_NAME = "cosmic-sound-125"
+# DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
+
+checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
+max_sequence = 60
+# input_size=(33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3)  # normalized input
+input_size = (33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15)  # unnormalized input
+sequence = [np.zeros(input_size) for _ in range(max_sequence)]
+sentence = []
+predictions = []
+threshold = 0.5
+
+
 def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
     labels.names
     row = 1
@@ -37,20 +54,19 @@ def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
     return input_frame
 
 
-mp_holistic = mp.solutions.holistic
-mp_drawing = mp.solutions.drawing_utils
+def unnormalized_keypoints(example):
+    for field in ["pose", "lh", "rh"]:
+        field_value = np.array(example[field])
+        field_mean = np.array(example[f"{field}_mean"])
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-RUN_NAME = "cosmic-sound-125"
-# DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
+        interleave = len(field_mean)
+        field_value = field_value.reshape(-1, interleave)
 
-checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
-max_sequence = 60
-input_size = (33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3)
-sequence = [np.zeros(input_size) for _ in range(max_sequence)]
-sentence = []
-predictions = []
-threshold = 0.5
+        field_value = field_value + field_mean
+        example[field] = field_value.reshape(-1)
+
+    return example
+
 
 if __name__ == "__main__":
     # ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
@@ -92,19 +108,19 @@ if __name__ == "__main__":
             draw_styled_landmarks(image, results)
 
             # 2. Prediction logic
-            keypoints = extract_keypoints_v3(results)
+            keypoints = unnormalized_keypoints(extract_keypoints_v3(results))
             sequence.append(
                 np.concatenate(
                     [
                         keypoints["pose"],
-                        keypoints["pose_mean"],
+                        # keypoints["pose_mean"],
                         keypoints["pose_angles"],
                         # keypoints["face"],
                         keypoints["lh"],
-                        keypoints["lh_mean"],
+                        # keypoints["lh_mean"],
                         keypoints["lh_angles"],
                         keypoints["rh"],
-                        keypoints["rh_mean"],
+                        # keypoints["rh_mean"],
                         keypoints["rh_angles"],
                     ]
                 )
