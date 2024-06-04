@@ -26,6 +26,6 @@ conda create --name env_name python=3.12
 conda activate env_name
 conda install pytorch torchvision torchaudio cpuonly -c pytorch # Without GPU
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-pip installtqdm datasets mediapipe wandb
+pip install tqdm datasets mediapipe wandb cv2
 pip install tqdm # for progress bar
 pip install datasets # generate dataset from files
