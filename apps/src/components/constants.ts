@@ -6,12 +6,12 @@ export const MENU = [
     subheader: 'Category',
     icon: 'waving_hand',
   },
-  {
-    key: 'text_to_gesture',
-    header: 'Translate',
-    subheader: 'Text to Gesture',
-    icon: 'text_fields',
-  },
+  // {
+  //   key: 'text_to_gesture',
+  //   header: 'Translate',
+  //   subheader: 'Text to Gesture',
+  //   icon: 'text_fields',
+  // },
   {
     key: 'gesture_to_text',
     header: 'Deep Sign',
