@@ -1,13 +1,15 @@
 {
-  "name": "dove-serums-labs-2024",
+  "name": "deepsign",
   "version": "0.0.1",
   "description": " ",
-  "author": "Reuben Cabrera <reubencabrera1@gmail.com>",
+  "author": "Christian Andrei Torrijos <christianandrei.torrijos@cvsu.edu.ph>",
   "private": true,
   "dependencies": {
     "@capacitor/android": "^5.0.0",
     "@capacitor/app": "^5.0.0",
+    "@capacitor/camera": "^6.0.0",
     "@capacitor/cli": "^5.0.0",
-    "@capacitor/core": "^5.0.0"
+    "@capacitor/core": "^5.0.0",
+    "@jcesarmobile/ssl-skip": "^0.2.0"
   }
 }

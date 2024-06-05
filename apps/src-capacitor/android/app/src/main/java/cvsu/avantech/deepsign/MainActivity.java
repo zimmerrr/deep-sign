@@ -1,4 +1,4 @@
-package tech.prismcode.doveserumslab;
+package cvsu.avantech.deepsign;
 
 import com.getcapacitor.BridgeActivity;
 

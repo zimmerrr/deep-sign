@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Dove Serums Lab</string>
-    <string name="title_activity_main">Dove Serums Lab</string>
-    <string name="package_name">tech.prismcode.doveserumslab</string>
-    <string name="custom_url_scheme">tech.prismcode.doveserumslab</string>
+    <string name="app_name">DeepSign</string>
+    <string name="title_activity_main">DeepSign</string>
+    <string name="package_name">cvus.avantech.deepsign</string>
+    <string name="custom_url_scheme">cvsu.avantech.deepsign</string>
 </resources>
