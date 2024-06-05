@@ -16,15 +16,15 @@ os.environ["WANDB_API_KEY"] = "7204bcf714a2bd747d4d973bc999fbc86df91649"
 
 torch.manual_seed(182731928)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATASET_NAME = "v4-fsl-143-v1-v2-20fps-with-flipped"
+DATASET_NAME = "v4-fsl-143-v1-v2-20fps-orig"
 NUM_EPOCH = 2000
 LEARNING_RATE = 0.001
 LR_REDUCE_FACTOR = 0.5
-LR_REDUCE_PATIENCE = 5
-GESTURE_LENGTH = 4
+LR_REDUCE_PATIENCE = 3
+GESTURE_LENGTH = 1
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
-# SEQUENCE_LENGTH = 30
+INPUT_SEQ_LENGTH = -1  # -1 for whole sequence
 ENABLE_AUGMENTATION = False
 NUM_SEQ_ACCURACY_CHECK = 1
 
@@ -87,9 +87,9 @@ def get_loss_and_accuracy(model, dl):
 # Jitter is applied as [-jitter / 2, jitter / 2]
 augmentation = AugmentationV2(
     [
-        Rotate(10),
-        Flip(0.5, 0.2, (0, 0)),
-        Scale((0.5, 0.5, 0.25)),
+        Rotate(15),
+        # Flip(0.5, 0.2, (0, 0)),
+        Scale((0.5, 0.5, 0)),
         Transform((0.5, 0.5, 0.25)),
     ]
 )
@@ -146,21 +146,24 @@ def concat_gestures_transform(examples):
 # Pad the keypoints with the last frame until it reaches the max length
 def pad_transform(examples):
     examples = concat_gestures_transform(examples)
-
-    max_len = max(examples["keypoints_length"])
     examples["pad_count"] = []
+
+    if INPUT_SEQ_LENGTH == -1:
+        max_len = max(examples["keypoints_length"])
+    else:
+        max_len = INPUT_SEQ_LENGTH
 
     for sample_idx in range(len(examples["keypoints_length"])):
         curr_len = examples["keypoints_length"][sample_idx]
         missing = max_len - curr_len
-        # start_idx = 0
+        start_idx = 0
 
         pad_count = max(missing, 0)
         examples["pad_count"].append(pad_count)
 
-        # if missing < 0:
-        #     max_idx = curr_len - max_len
-        #     start_idx = torch.randint(0, max_idx, (1,)).item()
+        if missing < 0:
+            max_idx = curr_len - max_len
+            start_idx = torch.randint(0, max_idx, (1,)).item()
 
         for field in fields_to_pad:
             field_value = torch.tensor(examples[field][sample_idx])
@@ -174,13 +177,10 @@ def pad_transform(examples):
                     field_value = torch.concat(
                         [torch.zeros(missing, len(field_value[0])), field_value]
                     )
-            # elif missing < 0:
-            #     field_value = field_value[start_idx : start_idx + max_len]
+            elif missing < 0:
+                field_value = field_value[start_idx : start_idx + max_len]
 
             examples[field][sample_idx] = field_value
-
-        # label = torch.tensor([examples["label"][sample_idx]]).repeat(5)
-        # examples["label"][sample_idx] = label
 
     return examples
 
@@ -276,6 +276,7 @@ if __name__ == "__main__":
         linear_size=128,
         bidirectional=True,
         loss_whole_sequence=False,
+        label_smoothing=0.0,
     )
     model = DeepSignV3(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
@@ -304,12 +305,14 @@ if __name__ == "__main__":
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes=f"deft-universe-122 w/ unnormalized data, ReduceLROnPlateau",
+        notes=f"dauntless-microwave-126 w/ non flipped ds, no seq limit, 4 gesture length, 0.1 label smoothing, aug",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
             "num_epoch": NUM_EPOCH,
             "lr": LEARNING_RATE,
+            "lr_reduce_factor": LR_REDUCE_FACTOR,
+            "lr_reduce_patience": LR_REDUCE_PATIENCE,
             "model_config": model_config,
             "loss_fn": model.criterion.__class__.__name__,
             "optimizer": optimizer.__class__.__name__,
@@ -321,6 +324,7 @@ if __name__ == "__main__":
             "num_params": model.get_num_parameters(),
             "gesture_len": GESTURE_LENGTH,
             "num_seq_accuracy_check": NUM_SEQ_ACCURACY_CHECK,
+            "input_seq_length": INPUT_SEQ_LENGTH,
         },
         tags=tags,
     )
