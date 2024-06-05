@@ -100,7 +100,7 @@ if __name__ == "__main__":
     pool = Pool(processes=1)
     # ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
 
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch. load (checkpoint_path, map_location = torch.device(DEVICE))
     label_feature = ClassLabel(names=checkpoint["label_names"])
     print("Checkpoint Name:", RUN_NAME)
     print("Labels:", checkpoint["label_names"])
