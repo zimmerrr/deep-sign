@@ -29,6 +29,8 @@ import * as Holistic from '@mediapipe/holistic'
 import { drawConnectors, drawLandmarks, lerp, Data } from '@mediapipe/drawing_utils'
 import { waitVideoMetadata } from 'src/components/utils'
 import * as ort from 'onnxruntime-web'
+import { runModel } from 'src/components/utils/modelHelper'
+import { inferenceDeepSign } from 'src/components/utils/predict'
 
 const WIDTH = 500
 const HEIGHT = 500
@@ -40,7 +42,7 @@ const running = ref(true)
 const videoElementRef = ref<HTMLVideoElement>(null as any)
 const canvasRef = ref<HTMLCanvasElement>(null as any)
 
-const debugMode = ref(true)
+const debugMode = ref(false)
 let startTime = performance.now()
 const inference = ref(0)
 
@@ -209,6 +211,9 @@ function onResults(results: Holistic.Results): void {
       results.image, 0, 0, WIDTH, HEIGHT)
   }
 
+  // console.log(results.poseLandmarks)
+  inferenceDeepSign(results)
+
   if (debugMode.value) {
   // POSE
     drawConnectors(
@@ -278,6 +283,7 @@ function onResults(results: Holistic.Results): void {
 
 onMounted(async () => {
   initialize()
+  runModel()
 })
 
 onBeforeMount(async () => {
