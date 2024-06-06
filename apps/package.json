@@ -23,6 +23,7 @@
     "@quasar/extras": "^1.16.4",
     "@tensorflow/tfjs": "^4.17.0",
     "lodash": "^4.17.21",
+    "mathjs": "^13.0.0",
     "onnxruntime-web": "^1.18.0",
     "opencv.js": "^1.2.1",
     "quasar": "^2.6.0",

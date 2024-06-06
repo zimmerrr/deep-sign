@@ -18,12 +18,12 @@ export const MENU = [
     subheader: 'Gesture to Text',
     icon: 'photo_camera',
   },
-  {
-    key: 'upload',
-    header: 'Upload',
-    subheader: 'Submit your own Gesture',
-    icon: 'file_upload',
-  },
+  // {
+  //   key: 'upload',
+  //   header: 'Upload',
+  //   subheader: 'Submit your own Gesture',
+  //   icon: 'file_upload',
+  // },
   {
     key: 'settings',
     header: 'Settings',

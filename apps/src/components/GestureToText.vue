@@ -17,6 +17,8 @@
         <video
           ref="videoElementRef"
           autoplay
+          muted
+          playinLine
           class="absolute-full"
         />
       </q-responsive>
@@ -29,8 +31,8 @@ import * as Holistic from '@mediapipe/holistic'
 import { drawConnectors, drawLandmarks, lerp, Data } from '@mediapipe/drawing_utils'
 import { waitVideoMetadata } from 'src/components/utils'
 import * as ort from 'onnxruntime-web'
-import { runModel } from 'src/components/utils/modelHelper'
-import { inferenceDeepSign } from 'src/components/utils/predict'
+// import { runModel } from 'src/components/utils/modelHelper'
+// import { inferenceDeepSign } from 'src/components/utils/predict'
 
 const WIDTH = 500
 const HEIGHT = 500
@@ -118,9 +120,7 @@ async function render() {
   startTime = performance.now()
 
   await holistic.send({ image: videoElementRef.value })
-  setTimeout(() => {
-    requestAnimationFrame(render)
-  }, 1000 / 30)
+  requestAnimationFrame(render)
 }
 
 async function useModel() {
@@ -212,7 +212,7 @@ function onResults(results: Holistic.Results): void {
   }
 
   // console.log(results.poseLandmarks)
-  inferenceDeepSign(results)
+  // inferenceDeepSign(results)
 
   if (debugMode.value) {
   // POSE
@@ -283,7 +283,6 @@ function onResults(results: Holistic.Results): void {
 
 onMounted(async () => {
   initialize()
-  runModel()
 })
 
 onBeforeMount(async () => {

@@ -11,7 +11,7 @@ export async function rundDeepSignModel(preprocessedData: InputMap): Promise<[an
   console.log('Inference session created')
 
   const [results, inferenceTime] = await runInference(session, preprocessedData)
-  return [results, inferenceTime]
+  return [results, inferenceTime] as any
 
   async function runInference(session: ort.InferenceSession, preprocessedData: InputMap): Promise<[any, number]> {
     const start = new Date()

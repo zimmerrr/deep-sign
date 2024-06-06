@@ -52,7 +52,7 @@ enum Mode {
 }
 
 const hasModel = ref(true)
-const mode = ref<Mode>(hasModel.value ? Mode.gesture_to_text : Mode.loading)
+const mode = ref<Mode>(hasModel.value ? Mode.gestures : Mode.loading)
 const lastScannerMode = ref(0)
 
 const menu = ref({})
@@ -71,21 +71,6 @@ function setMode(newMode: Mode) {
   mode.value = newMode
 }
 </script>
-
-<style scoped lang="sass">
-.page-card
-  max-width: 550px
-  width: 100%
-
-@media (max-width: 1024px)
-  .page-card
-    max-width: 1024px
-    width: 100%
-
-:deep(.q-field--outlined .q-field__control:before)
-  border: 2px solid $primary
-  transition: border-color 0.36s cubic-bezier(0.4, 0, 0.2, 1)
-</style>
 
 <style scoped lang="sass">
 .page-card

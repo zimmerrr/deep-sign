@@ -1,5 +1,6 @@
 import { Tensor } from 'onnxruntime-web'
 import { Landmark, Results } from '@mediapipe/holistic'
+import { dot } from 'mathjs'
 
 interface Keypoint {
   x: number
@@ -17,12 +18,13 @@ function flattenKeypoints(keypoints: any[]) {
 }
 
 function getAngles(data: Keypoint, interleave: number, parentIndices: any, childIndices: any, vecA: any, vecB: any) {
-  //convert python code that uses numpy to ts
+  // convert python code that uses numpy to ts
 
+  const vDot = dot(vecA, vecB)
   // return angles
-
+}
 function getHandDirections(data: Keypoint, interleave: number, parentIndices: any, childIndices: any, vecA: any, vecB: any) {
-  //convert python code that uses numpy to ts
+  // convert python code that uses numpy to ts
 
   // return direction.flatten
 }
