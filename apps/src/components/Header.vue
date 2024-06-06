@@ -6,7 +6,7 @@
           {{ props.header }}
         </div>
       </div>
-      <div class="col-3">
+      <div class="col-3 q-mt-sm">
         <div class="q-pa-sm">
           <q-img
             src="~assets/logo.png"
@@ -37,5 +37,5 @@ const props = defineProps({
 <style lang="sass" scoped>
 
 .logo
-  width: 100px !important
+  width: 100% !important
 </style>
