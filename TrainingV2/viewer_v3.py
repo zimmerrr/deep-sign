@@ -46,7 +46,8 @@ RUN_NAME = "cosmic-sound-125"
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
 max_sequence = 60
-input_size = (33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3)
+# input_size=(33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3)  # normalized input
+input_size = (33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15)  # unnormalized input
 sequence = [np.zeros(input_size) for _ in range(max_sequence)]
 sentence = []
 predictions = []
@@ -97,14 +98,14 @@ if __name__ == "__main__":
                 np.concatenate(
                     [
                         keypoints["pose"],
-                        keypoints["pose_mean"],
+                        # keypoints["pose_mean"],
                         keypoints["pose_angles"],
                         # keypoints["face"],
                         keypoints["lh"],
-                        keypoints["lh_mean"],
+                        # keypoints["lh_mean"],
                         keypoints["lh_angles"],
                         keypoints["rh"],
-                        keypoints["rh_mean"],
+                        # keypoints["rh_mean"],
                         keypoints["rh_angles"],
                     ]
                 )
@@ -119,21 +120,21 @@ if __name__ == "__main__":
 
                 # 3. Viz logic
                 # image = prob_viz(output[0], ds["train"].features["label"], image)
-                image = prob_viz(output[0], label_feature, image)
+                # image = prob_viz(output[0], label_feature, image)
             deepsign_duration = round((time.time() - start_time) * 1000, 2)
             overall_duration = round((time.time() - overall_start_time) * 1000, 2)
 
             cv2.rectangle(image, (0, 0), (640, 40), (245, 117, 16), -1)
-            cv2.putText(
-                image,
-                " ".join(sentence),
-                (3, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-                cv2.LINE_AA,
-            )
+            # cv2.putText(
+            #     image,
+            #     " ".join(sentence),
+            #     (3, 30),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     1,
+            #     (255, 255, 255),
+            #     2,
+            #     cv2.LINE_AA,
+            # )
 
             # Display FPS
             cv2.putText(

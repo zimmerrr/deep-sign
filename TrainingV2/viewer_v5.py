@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import torch.nn.functional as F
-from model.deepsign_v3 import DeepSignV3
+from model.deepsign_v5 import DeepSignV5
 import torch
 from datasets import load_from_disk, ClassLabel
 from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints_v3
@@ -16,7 +16,7 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-RUN_NAME = "hearty-fire-138"
+RUN_NAME = "silver-dragon-146"
 # DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
@@ -24,6 +24,7 @@ sequence_async = []
 sentence = []
 num_frames_to_idle = 10
 target_fps = 20
+input_seq_len = 60
 
 
 def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
@@ -111,7 +112,7 @@ if __name__ == "__main__":
         checkpoint["test_acc"],
     )
 
-    model = DeepSignV3(checkpoint["config"]).to(DEVICE)
+    model = DeepSignV5(checkpoint["config"]).to(DEVICE)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
@@ -159,16 +160,26 @@ if __name__ == "__main__":
                 if len(sequence_async):
                     start_time = time.time()
                     keypoints = []
-                    for results in sequence_async:
+                    for results in sequence_async[:-num_frames_to_idle]:
                         keypoints.append(results.get())
 
                     holistic_duration = round((time.time() - start_time) * 1000, 2)
 
                     # User has gone idle, make a prediction
                     start_time = time.time()
-                    input = torch.tensor([keypoints], dtype=torch.float32).to(DEVICE)
-                    output, _ = model(input)
-                    output = F.softmax(output[:, -1, :]).cpu().detach()
+                    input = torch.tensor([keypoints], dtype=torch.float32)
+
+                    # Trim or pad sequence
+                    missing = input_seq_len - input.size(1)
+                    if missing > 0:
+                        pad = torch.zeros(1, missing, len(input[0][0]))
+                        input = torch.concat([pad, input], dim=1)
+                    else:
+                        input = input[:, -input_seq_len:, :]
+
+                    input = input.to(DEVICE)
+                    output, _, _ = model(input)
+                    output = F.softmax(output).cpu().detach()
 
                     last_output = output[0]
                     probs, label_indices = output[0].topk(1)
@@ -181,7 +192,7 @@ if __name__ == "__main__":
 
                     deepsign_duration = round((time.time() - start_time) * 1000, 2)
                     print(
-                        f"Gesture: {label} @ {len(input[0])} frames,",
+                        f"Gesture: {label} @ {len(input[0]) - missing} frames,",
                         f"DSign: {deepsign_duration}ms,",
                         f"Hol: {holistic_duration}ms",
                     )
@@ -194,6 +205,7 @@ if __name__ == "__main__":
                 if (now - last_frame_time) >= 1 / target_fps:
                     result = pool.apply_async(process_frame, [frame])
                     sequence_async.append(result)
+                    sequence_async = sequence_async[-input_seq_len:]
                     last_frame_time += 1 / target_fps
 
             frame_duration = round((time.time() - start_time) * 1000, 2)

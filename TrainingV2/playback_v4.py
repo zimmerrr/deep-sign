@@ -1,6 +1,8 @@
 import cv2
+import torch
 import numpy as np
 from datasets import load_from_disk, concatenate_datasets
+from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale, Rotate
 from tqdm import tqdm
 
 DATASET_NAME = "v4-fsl-143-v1-v2-20fps-orig"
@@ -8,7 +10,7 @@ WIDTH = 640
 HEIGHT = 360
 
 
-def play(sample):
+def play(sample, augmentation=None):
     for frame_idx in range(len(sample["pose"])):
         image = np.zeros((HEIGHT, WIDTH, 3), np.uint8)
 
@@ -17,19 +19,31 @@ def play(sample):
         lh = sample["lh"][frame_idx]
         rh = sample["rh"][frame_idx]
 
+        if augmentation is not None:
+            pose, face, lh, rh = augmentation(
+                torch.tensor(pose),
+                torch.tensor(face),
+                torch.tensor(lh),
+                torch.tensor(rh),
+            )
+            pose = pose.numpy()
+            face = face.numpy()
+            lh = lh.numpy()
+            rh = rh.numpy()
+
         pose_mean = sample["pose_mean"][frame_idx]
         face_mean = sample["face_mean"][frame_idx]
         lh_mean = sample["lh_mean"][frame_idx]
         rh_mean = sample["rh_mean"][frame_idx]
 
         # Face Playback
-        for idx in range(0, len(face), 3):
-            x = face[idx] + face_mean[0]
-            y = face[idx + 1] + face_mean[1]
-            z = face[idx + 2] + face_mean[2]
-            center = (int(x * WIDTH), int(y * HEIGHT))
+        # for idx in range(0, len(face), 3):
+        #     x = face[idx] + face_mean[0]
+        #     y = face[idx + 1] + face_mean[1]
+        #     z = face[idx + 2] + face_mean[2]
+        #     center = (int(x * WIDTH), int(y * HEIGHT))
 
-            cv2.circle(image, center, 3, (255, 0, 0))
+        #     cv2.circle(image, center, 3, (255, 0, 0))
 
         # Pose Playback
         for idx in range(0, len(pose), 4):
@@ -72,7 +86,16 @@ if __name__ == "__main__":
     running = True
     sample_idx = 0
     gesture_idx = 0
+    augment_idx = 0
     changed = True
+
+    augmentations = [
+        None,
+        Rotate(15, offset=[0, 0, 0]),
+        Flip(0.5, 0, (0, 0)),
+        Scale((0.5, 0, 0), offset=[0, 0, 0]),
+        Transform((0.5, 0.5, 0)),
+    ]
 
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
     ds = concatenate_datasets([ds["train"], ds["test"]])
@@ -105,7 +128,7 @@ if __name__ == "__main__":
             )
 
         sample = filtered_ds[sample_idx]
-        last_key = play(sample)
+        last_key = play(sample, augmentations[augment_idx])
 
         # NEXT SAMPLE = d
         if last_key == 100:
@@ -123,6 +146,18 @@ if __name__ == "__main__":
                 f"Frames: {len(filtered_ds[sample_idx]['pose'])}",
                 f"File: {filtered_ds[sample_idx]['file']}",
             )
+            continue
+
+        elif last_key == 116:  # t
+            augment_idx = (augment_idx + 1) % len(augmentations)
+            if augmentations[augment_idx] is not None:
+                augmentations[augment_idx].generate_vars()
+            print(f"Augmentation: {augmentations[augment_idx]}")
+            continue
+
+        elif last_key == 114:  # r
+            if augmentations[augment_idx] is not None:
+                augmentations[augment_idx].generate_vars()
             continue
 
         # NEXT GESTURE = w

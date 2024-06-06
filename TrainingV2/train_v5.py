@@ -1,5 +1,5 @@
 import time
-from model.deepsign_v3 import DeepSignV3, DeepSignConfigV3
+from model.deepsign_v5 import DeepSignV5, DeepSignConfigV5
 from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale, Rotate
 from utils import get_hand_angles, get_pose_angles, get_directions
 from datasets import load_from_disk
@@ -16,8 +16,8 @@ os.environ["WANDB_API_KEY"] = "7204bcf714a2bd747d4d973bc999fbc86df91649"
 
 torch.manual_seed(182731928)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATASET_NAME = "v4-fsl-143-v1-v2-20fps-orig"
-NUM_EPOCH = 2000
+DATASET_NAME = "v4-fsl-143-v2-v3-20fps-with-flipped"
+NUM_EPOCH = 400
 LEARNING_RATE = 0.001
 LR_REDUCE_FACTOR = 0.5
 LR_REDUCE_PATIENCE = 3
@@ -25,8 +25,8 @@ GESTURE_LENGTH = 1
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
 INPUT_SEQ_LENGTH = -1  # -1 for whole sequence
-ENABLE_AUGMENTATION = True
-NUM_SEQ_ACCURACY_CHECK = 1
+ENABLE_AUGMENTATION = False
+# NUM_SEQ_ACCURACY_CHECK = 1
 
 # Make sure the batch size is divisible by the mini-batch size
 assert BATCH_SIZE / MINIBATCH_SIZE == BATCH_SIZE // MINIBATCH_SIZE
@@ -37,55 +37,71 @@ def get_loss_and_accuracy(model, dl):
     model.eval()
     total_accuracy = []
     total_loss = []
+    total_indv_loss = []
+
     for sample in dl:
         input_pose = sample["pose"].to(DEVICE)
-        # input_face = sample["face"].to(DEVICE)
         input_lh = sample["lh"].to(DEVICE)
         input_rh = sample["rh"].to(DEVICE)
         input_pose_angles = sample["pose_angles"].to(DEVICE)
         input_lh_angles = sample["lh_angles"].to(DEVICE)
         input_rh_angles = sample["rh_angles"].to(DEVICE)
-        # input_pose_mean = sample["pose_mean"].to(DEVICE)
-        # input_lh_mean = sample["lh_mean"].to(DEVICE)
-        # input_rh_mean = sample["rh_mean"].to(DEVICE)
         input_lh_dir = sample["lh_dir"].to(DEVICE)
         input_rh_dir = sample["rh_dir"].to(DEVICE)
         input = torch.cat(
             [
                 input_pose,
-                # input_pose_mean,
                 input_pose_angles,
                 input_lh,
-                # input_lh_mean,
                 input_lh_angles,
                 input_lh_dir,
                 input_rh,
-                # input_rh_mean,
                 input_rh_angles,
                 input_rh_dir,
             ],
             dim=-1,
         )
-        label = sample["label"].to(DEVICE)
 
-        output, loss = model(input, label)
+        target_label = sample["label"].to(DEVICE)
+        target_handshape = sample["handshape"].to(DEVICE)
+        target_orientation = sample["orientation"].to(DEVICE)
+        target_movement = sample["movement"].to(DEVICE)
+        target_location = sample["location"].to(DEVICE)
+        target_hands = sample["hands"].to(DEVICE)
+        output, loss, indv_loss = model(
+            input,
+            target_label,
+            target_handshape,
+            target_orientation,
+            target_movement,
+            target_location,
+            target_hands,
+        )
         total_loss.append(loss.item())
+        total_indv_loss.append({k: v.item() for k, v in indv_loss.items()})
 
         output = F.softmax(output, dim=-1)
         output = output.argmax(-1)
 
         # only compare the last NUM_SEQ_ACCURACY_CHECK sequences
-        output = output[:, -NUM_SEQ_ACCURACY_CHECK:]
-        label = label[:, -NUM_SEQ_ACCURACY_CHECK:]
+        # output = output[:, -NUM_SEQ_ACCURACY_CHECK:]
+        # target_label = target_label[:, -NUM_SEQ_ACCURACY_CHECK:]
+        target_label = target_label.view(-1)
 
-        total_correct = torch.sum(output == label)
-        total_samples = label.numel()
+        total_correct = torch.sum(output == target_label)
+        total_samples = target_label.numel()
         accuracy = total_correct / total_samples
         total_accuracy.append(accuracy.item())
 
     avg_loss = sum(total_loss) / len(total_loss)
     avg_accuracy = sum(total_accuracy) / len(total_accuracy)
-    return avg_loss, avg_accuracy
+
+    avg_indv_loss = {k: [] for k in total_indv_loss[0].keys()}
+    for item in total_indv_loss:
+        for k, v in item.items():
+            avg_indv_loss[k].append(v)
+    avg_indv_loss = {k: sum(v) / len(v) for k, v in avg_indv_loss.items()}
+    return avg_loss, avg_accuracy, indv_loss
 
 
 # Jitter is applied as [-jitter / 2, jitter / 2]
@@ -112,38 +128,28 @@ fields_to_pad = [
     "rh_angles",
     "lh_dir",
     "rh_dir",
-    "label",
 ]
 
 
-def concat_gestures_transform(examples):
-    new_examples = {k: [] for k in fields_to_pad}
-    new_examples["keypoints_length"] = []
-    new_examples["label"] = []
-    new_examples["pose_angles"] = []
-    new_examples["lh_angles"] = []
-    new_examples["rh_angles"] = []
+def concat_gestures_transform(examples, gesture_length):
+    new_examples = {k: [] for k in examples.keys()}
 
-    for sample_idx in range(0, len(examples["keypoints_length"]), GESTURE_LENGTH):
-        keypoints_length = 0
-        label = []
+    for sample_idx in range(0, len(examples["keypoints_length"]), gesture_length):
+        example = {k: [] for k in examples.keys()}
+        for field in examples.keys():
+            for i in range(gesture_length):
+                if isinstance(examples[field][sample_idx + i], list):
+                    example[field].extend(examples[field][sample_idx + i])
+                else:
+                    example[field].append(examples[field][sample_idx + i])
 
-        for field in fields_to_pad:
-            if field == "label":
-                continue
+        example["keypoints_length"] = sum(example["keypoints_length"])
 
-            field_value = []
-            for i in range(GESTURE_LENGTH):
-                field_value.extend(examples[field][sample_idx + i])
-            new_examples[field].append(field_value)
-
-        for i in range(GESTURE_LENGTH):
-            current_length = examples["keypoints_length"][sample_idx + i]
-            keypoints_length += current_length
-            label.extend([examples["label"][sample_idx + i]] * current_length)
-
-        new_examples["keypoints_length"].append(keypoints_length)
-        new_examples["label"].append(label)
+        for k, v in example.items():
+            if type(v) == int or type(v[0]) == str or k in fields_to_pad:
+                new_examples[k].append(v)
+            else:
+                new_examples[k].append(torch.tensor(v))
 
     return new_examples
 
@@ -151,7 +157,6 @@ def concat_gestures_transform(examples):
 # Make sure all examples have the same number of keypoints
 # Pad the keypoints with the last frame until it reaches the max length
 def pad_transform(examples):
-    examples = concat_gestures_transform(examples)
     examples["pad_count"] = []
 
     if INPUT_SEQ_LENGTH == -1:
@@ -191,9 +196,7 @@ def pad_transform(examples):
     return examples
 
 
-def augment_and_pad_transform(examples):
-    examples = pad_transform(examples)
-
+def augment_transform(examples):
     for sample_idx in range(len(examples["keypoints_length"])):
         pose = examples["pose"][sample_idx]
         face = examples["face"][sample_idx]
@@ -218,62 +221,6 @@ def augment_and_pad_transform(examples):
     return examples
 
 
-def compute_angles(examples):
-    pose_angles = []
-    lh_angles = []
-    rh_angles = []
-
-    for pose in examples["pose"]:
-        pose_angles.append(np.array([get_pose_angles(kp) for kp in pose]))
-
-    for lh in examples["lh"]:
-        lh_angles.append(np.array([get_hand_angles(kp) for kp in lh]))
-
-    for rh in examples["rh"]:
-        rh_angles.append(np.array([get_hand_angles(kp) for kp in rh]))
-
-    return dict(
-        pose_angles=pose_angles,
-        lh_angles=lh_angles,
-        rh_angles=rh_angles,
-    )
-
-
-def compute_directions(examples):
-    lh_dir = []
-    rh_dir = []
-
-    parent_idx = [0, 0, 4, 4, 8, 8, 12, 12, 16, 16, 20, 20]
-    child_idx = [4, 20, 0, 2, 5, 9, 9, 13, 13, 17, 17, 13]
-    vec_a = [0, 1, 3, 5, 7, 9]
-    vec_b = [1, 2, 4, 6, 8, 10]
-
-    for lh in examples["lh"]:
-        lh_dir.append(
-            np.array(
-                [
-                    get_directions(kp, 3, parent_idx, child_idx, vec_a, vec_b)
-                    for kp in lh
-                ]
-            )
-        )
-
-    for rh in examples["rh"]:
-        rh_dir.append(
-            np.array(
-                [
-                    get_directions(kp, 3, parent_idx, child_idx, vec_a, vec_b)
-                    for kp in rh
-                ]
-            )
-        )
-
-    return dict(
-        lh_dir=lh_dir,
-        rh_dir=rh_dir,
-    )
-
-
 def unnormalized_keypoints(example):
     for field in ["pose", "lh", "rh"]:
         field_value = np.array(example[field])
@@ -290,13 +237,32 @@ def unnormalized_keypoints(example):
     return example
 
 
+def train_transform(examples):
+    examples = concat_gestures_transform(examples, GESTURE_LENGTH)
+    examples = pad_transform(examples)
+    if ENABLE_AUGMENTATION:
+        examples = augment_transform(examples)
+    return examples
+
+
+def test_transform(examples):
+    examples = concat_gestures_transform(examples, 1)
+    examples = pad_transform(examples)
+    return examples
+
+
+# def test_transform(examples):
+
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
-    ds = ds.map(compute_directions, batched=True)
+    ds = ds.remove_columns(["file", "fps"])
     ds = ds.map(unnormalized_keypoints)
     label_feature = ds["train"].features["label"]
-    # idle_idx = label_feature.str2int("IDLE")
-    # ds = ds.filter(lambda example: example["label"] != idle_idx)
+    handshape_feature = ds["train"].features["handshape"]
+    orientation_feature = ds["train"].features["orientation"]
+    movement_feature = ds["train"].features["movement"]
+    location_feature = ds["train"].features["location"]
+    hands_feature = ds["train"].features["hands"]
 
     print(ds)
 
@@ -304,26 +270,34 @@ if __name__ == "__main__":
         print(augmentation)
 
     ds = ds.with_format("torch")
-    ds["train"].set_transform(
-        augment_and_pad_transform if ENABLE_AUGMENTATION else pad_transform
-    )
-    ds["test"].set_transform(pad_transform)
+    ds["train"].set_transform(train_transform)
+    ds["test"].set_transform(test_transform)
 
-    model_config = DeepSignConfigV3(
-        # input_size=(33 * 4 + 28 + 4) + (21 * 3 + 15 + 3) + (21 * 3 + 15 + 3),  # normalized input
-        # input_size=(33 * 4 + 28) + (21 * 3 + 15) + (21 * 3 + 15),  # unnormalized input
+    model_config = DeepSignConfigV5(
+        num_label=len(label_feature.names),
+        num_handshape=len(handshape_feature.names),
+        num_orientation=len(orientation_feature.names),
+        num_movement=len(movement_feature.names),
+        num_location=len(location_feature.names),
+        num_hands=len(hands_feature.names),
         input_size=(33 * 4 + 28)
         + (21 * 3 + 15 + 6 * 3)
         + (21 * 3 + 15 + 6 * 3),  # unnormalized input w/ directions
-        num_label=len(label_feature.names),
-        lstm_size=64,
-        lstm_layers=2,
-        linear_size=128,
+        label_lstm_size=64,
+        label_lstm_layers=2,
+        feature_lstm_size=24,
+        feature_lstm_layers=2,
+        label_linear_size=64,
+        handshape_linear_size=24,
+        orientation_linear_size=24,
+        movement_linear_size=24,
+        location_linear_size=24,
+        hands_linear_size=24,
         bidirectional=True,
-        loss_whole_sequence=False,
         label_smoothing=0.0,
+        dropout=0.5,
     )
-    model = DeepSignV3(model_config).to(DEVICE)
+    model = DeepSignV5(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -335,22 +309,31 @@ if __name__ == "__main__":
     )
 
     dl_params = dict(
-        batch_size=MINIBATCH_SIZE * GESTURE_LENGTH,
         persistent_workers=True,
         shuffle=True,
         drop_last=True,
     )
-    train_dl = DataLoader(ds["train"], num_workers=10, **dl_params)
-    test_dl = DataLoader(ds["test"], num_workers=2, **dl_params)
+    train_dl = DataLoader(
+        ds["train"],
+        num_workers=12,
+        batch_size=MINIBATCH_SIZE * GESTURE_LENGTH,
+        **dl_params,
+    )
+    test_dl = DataLoader(
+        ds["test"],
+        num_workers=2,
+        batch_size=MINIBATCH_SIZE,
+        **dl_params,
+    )
 
-    tags = [DATASET_NAME, "deepsign_v3", "train_v4", "fp32", "no_face"]
+    tags = [DATASET_NAME, "deepsign_v5", "train_v5", "fp32", "no_face"]
     if ENABLE_AUGMENTATION:
         tags.append("augmentation_v2")
 
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes=f"youthful-feather-135 w/ more hand directions",
+        notes=f"New model with asl structures, flipped dataset",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
@@ -368,7 +351,7 @@ if __name__ == "__main__":
             "augmentation": str(augmentation) if ENABLE_AUGMENTATION else "None",
             "num_params": model.get_num_parameters(),
             "gesture_len": GESTURE_LENGTH,
-            "num_seq_accuracy_check": NUM_SEQ_ACCURACY_CHECK,
+            # "num_seq_accuracy_check": NUM_SEQ_ACCURACY_CHECK,
             "input_seq_length": INPUT_SEQ_LENGTH,
         },
         tags=tags,
@@ -382,36 +365,42 @@ if __name__ == "__main__":
         # TRAIN LOOP
         for sample in train_dl:
             input_pose = sample["pose"].to(DEVICE)
-            # input_face = sample["face"].to(DEVICE)
             input_lh = sample["lh"].to(DEVICE)
             input_rh = sample["rh"].to(DEVICE)
             input_pose_angles = sample["pose_angles"].to(DEVICE)
             input_lh_angles = sample["lh_angles"].to(DEVICE)
             input_rh_angles = sample["rh_angles"].to(DEVICE)
-            # input_pose_mean = sample["pose_mean"].to(DEVICE)
-            # input_lh_mean = sample["lh_mean"].to(DEVICE)
-            # input_rh_mean = sample["rh_mean"].to(DEVICE)
             input_lh_dir = sample["lh_dir"].to(DEVICE)
             input_rh_dir = sample["rh_dir"].to(DEVICE)
             input = torch.cat(
                 [
                     input_pose,
-                    # input_pose_mean,
                     input_pose_angles,
                     input_lh,
-                    # input_lh_mean,
                     input_lh_angles,
                     input_lh_dir,
                     input_rh,
-                    # input_rh_mean,
                     input_rh_angles,
                     input_rh_dir,
                 ],
                 dim=-1,
             )
-            label = sample["label"].to(DEVICE)
 
-            output, loss = model(input, label)
+            target_label = sample["label"].to(DEVICE)
+            target_handshape = sample["handshape"].to(DEVICE)
+            target_orientation = sample["orientation"].to(DEVICE)
+            target_movement = sample["movement"].to(DEVICE)
+            target_location = sample["location"].to(DEVICE)
+            target_hands = sample["hands"].to(DEVICE)
+            output, loss, indv_loss = model(
+                input,
+                target_label,
+                target_handshape,
+                target_orientation,
+                target_movement,
+                target_location,
+                target_hands,
+            )
 
             # Accomodate mini-batch size in the loss
             loss = loss / (BATCH_SIZE / MINIBATCH_SIZE)
@@ -423,8 +412,10 @@ if __name__ == "__main__":
 
         # TEST LOOP
         if (epoch + 1) % 10 == 0:
-            train_loss, train_acc = get_loss_and_accuracy(model, train_dl)
-            test_loss, test_acc = get_loss_and_accuracy(model, test_dl)
+            train_loss, train_acc, train_indv_loss = get_loss_and_accuracy(
+                model, train_dl
+            )
+            test_loss, test_acc, test_indv_loss = get_loss_and_accuracy(model, test_dl)
             scheduler.step(test_loss)
 
             data = {
@@ -435,6 +426,8 @@ if __name__ == "__main__":
                 "lr": optimizer.param_groups[0]["lr"],
             }
             pbar.set_postfix(**data)
+            data.update({f"train_{k}": v for k, v in train_indv_loss.items()})
+            data.update({f"test_{k}": v for k, v in test_indv_loss.items()})
             wandb.log(data, step=epoch)
 
         # SAVE MODEL IF ACCURACY INCREASED
@@ -457,6 +450,11 @@ if __name__ == "__main__":
                     "epoch": epoch,
                     "test_acc": best_acc,
                     "label_names": label_feature.names,
+                    "handshape_names": handshape_feature.names,
+                    "orientation_names": orientation_feature.names,
+                    "movement_names": movement_feature.names,
+                    "location_names": location_feature.names,
+                    "hands_names": hands_feature.names,
                 },
                 path,
             )

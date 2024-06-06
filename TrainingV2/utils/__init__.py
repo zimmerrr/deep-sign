@@ -182,7 +182,7 @@ def normalize_keypoints(data, interleave):
         mean = np.mean(data[i::interleave])
         means.append(mean)
         data[i::interleave] = data[i::interleave] - mean
-        
+
     return data.astype(np.float32), np.array(means, dtype=np.float32)
 
 
@@ -210,6 +210,23 @@ def get_angles(data, interleave, parent_indices, child_indices, vec_a, vec_b):
         return np.zeros(len(vec_a), dtype=np.float32)
 
     return angles
+
+
+def get_directions(data, interleave, parent_indices, child_indices, vec_a, vec_b):
+    data = np.array(data, dtype=np.float32).reshape(-1, interleave)
+    if not data.any():
+        return np.zeros(len(vec_a) * 3, dtype=np.float32)
+
+    v1 = data[parent_indices, :interleave]
+    v2 = data[child_indices, :interleave]
+    v = v2 - v1
+
+    # Normalize
+    v = v / np.linalg.norm(v, axis=1)[:, np.newaxis]
+
+    # Get direction using cross product
+    direction = np.cross(v[vec_a, :], v[vec_b, :])
+    return direction.flatten()
 
 
 def get_hand_angles(data):
@@ -299,6 +316,23 @@ def extract_keypoints_v3(results):
     lh, lh_mean = normalize_keypoints(lh, 3)
     rh, rh_mean = normalize_keypoints(rh, 3)
 
+    lh_dir = get_directions(
+        lh,
+        3,
+        [0, 0, 4, 4, 8, 8, 12, 12, 16, 16, 20, 20],
+        [4, 20, 0, 2, 5, 9, 9, 13, 13, 17, 17, 13],
+        [0, 1, 3, 5, 7, 9],
+        [1, 2, 4, 6, 8, 10],
+    )
+    rh_dir = get_directions(
+        rh,
+        3,
+        [0, 0, 4, 4, 8, 8, 12, 12, 16, 16, 20, 20],
+        [4, 20, 0, 2, 5, 9, 9, 13, 13, 17, 17, 13],
+        [0, 1, 3, 5, 7, 9],
+        [1, 2, 4, 6, 8, 10],
+    )
+
     return dict(
         pose=pose,
         pose_angles=get_pose_angles(pose),
@@ -311,4 +345,6 @@ def extract_keypoints_v3(results):
         face_mean=face_mean,
         lh_mean=lh_mean,
         rh_mean=rh_mean,
+        lh_dir=lh_dir,
+        rh_dir=rh_dir,
     )

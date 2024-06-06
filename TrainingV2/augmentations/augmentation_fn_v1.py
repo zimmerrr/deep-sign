@@ -116,10 +116,11 @@ class Scale(AugmentationFn):
         self,
         jitter=(0.1, 0.1, 0.1),
         p=0.5,
+        offset=[0.5, 0.5, 0.5],
     ):
         self.jitter = torch.tensor(jitter)
         self.jitter_half = self.jitter / 2
-        self.offset = torch.tensor([0.5, 0.5, 0.5])
+        self.offset = torch.tensor(offset)
         self.p = p
 
     def get_params(self):
@@ -158,23 +159,34 @@ class Rotate(AugmentationFn):
         self,
         jitter=10,
         p=0.5,
+        offset=[0.5, 0.5, 0.5],
     ):
         self.jitter = torch.tensor(jitter)
         self.jitter_half = self.jitter / 2
+        self.offset = torch.tensor(offset)
         self.p = p
 
     def get_params(self):
         return dict(jitter=self.jitter.numpy(), p=self.p)
 
     def _apply(self, data, interleave, jitter):
+        offset = self.offset
+        if interleave != len(offset):
+            missing = interleave - len(offset)
+            offset = torch.cat([offset, torch.zeros(missing)])
+
+        offset = offset.repeat(len(data) // interleave)
+
         rot_mat = torch.eye(interleave)
         rot_mat[0, 0] = torch.cos(jitter)
         rot_mat[0, 1] = -torch.sin(jitter)
         rot_mat[1, 0] = torch.sin(jitter)
         rot_mat[1, 1] = torch.cos(jitter)
 
+        data = torch.sub(data, offset)
         data = torch.matmul(data.view(-1, interleave), rot_mat)
-        return data.view(-1)
+        data = torch.add(data.view(-1), offset)
+        return data
 
     def generate_vars(self):
         self._jitter = torch.deg2rad((torch.rand(1) * self.jitter) - self.jitter_half)

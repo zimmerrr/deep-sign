@@ -12,54 +12,51 @@ from utils import mediapipe_detection, extract_keypoints_v3
 
 mp_holistic = mp.solutions.holistic
 
-DATASET_NAME = "fsl-143-v1"
-DATASET_VERSION = "v2"
+DATASET_NAME = "fsl-143-v2"
+DATASET_VERSION = "v3"
 DATA_PATH = os.path.join(f"../Dataset/{DATASET_NAME}")
-NUM_PROC = max(int(os.cpu_count() * 0.5), 1)
+NUM_PROC = max(int(os.cpu_count() * 0.25), 1)
 TARGET_FPS = 20
 WITH_FLIP = True
+LOAD_FROM_CACHE = False
 
 
 def get_files(examples):
-    new_examples = {
-        "id": [],
-        "label": [],
-        "category": [],
-        "file": [],
-    }
+    new_examples = {k: [] for k in examples.keys()}
+    new_examples["file"] = []
 
     # Create new example for each file
     for idx, id in enumerate(examples["id"]):
         label_dir = os.path.join(DATA_PATH, f"clips/{id}/**/*.*")
         for file in glob.glob(label_dir, recursive=True):
-            new_examples["id"].append(examples["id"][idx])
-            new_examples["label"].append(examples["label"][idx])
-            new_examples["category"].append(examples["category"][idx])
+            for k in examples.keys():
+                new_examples[k].append(examples[k][idx])
             new_examples["file"].append(file)
 
     return new_examples
 
 
 def get_keypoints(examples, flip_horizontal=False):
-    new_examples = {
-        "id": [],
-        "label": [],
-        "category": [],
-        "file": [],
-        "pose": [],
-        "face": [],
-        "lh": [],
-        "rh": [],
-        "pose_mean": [],
-        "face_mean": [],
-        "lh_mean": [],
-        "rh_mean": [],
-        "pose_angles": [],
-        "lh_angles": [],
-        "rh_angles": [],
-        "fps": [],
-        "keypoints_length": [],
-    }
+    new_examples = {k: [] for k in examples.keys()}
+    new_examples.update(
+        {
+            "pose": [],
+            "face": [],
+            "lh": [],
+            "rh": [],
+            "pose_mean": [],
+            "face_mean": [],
+            "lh_mean": [],
+            "rh_mean": [],
+            "pose_angles": [],
+            "lh_angles": [],
+            "rh_angles": [],
+            "lh_dir": [],
+            "rh_dir": [],
+            "fps": [],
+            "keypoints_length": [],
+        }
+    )
 
     with mp_holistic.Holistic(
         min_detection_confidence=0.5,
@@ -119,6 +116,17 @@ def get_keypoints(examples, flip_horizontal=False):
                 last_gesture_idx = len(frame_gesture_types)
 
             if first_gesture_idx > 0:
+                for k in examples.keys():
+                    if k in [
+                        "id",
+                        "label",
+                        "category",
+                        "file",
+                        "fps",
+                        "keypoints_length",
+                    ]:
+                        continue
+                    new_examples[k].append(examples[k][idx])
                 idle_keypoints = example_keypoints[:first_gesture_idx]
                 new_examples["id"].append(-1)
                 new_examples["label"].append("IDLE")
@@ -139,9 +147,10 @@ def get_keypoints(examples, flip_horizontal=False):
             if len(gesture_keypoints) <= 10:
                 print(f"Warning: {file} has less than 10 frames of gesture")
 
-            new_examples["id"].append(examples["id"][idx])
-            new_examples["label"].append(examples["label"][idx])
-            new_examples["category"].append(examples["category"][idx])
+            for k in examples.keys():
+                if k in ["file", "fps", "keypoints_length"]:
+                    continue
+                new_examples[k].append(examples[k][idx])
             new_examples["file"].append(file)
             new_examples["fps"].append(example_fps / frame_num_skip)
             new_examples["keypoints_length"].append(len(gesture_keypoints))
@@ -177,7 +186,6 @@ def filter_max_count(examples, max_samples):
 
 
 if __name__ == "__main__":
-    LOAD_FROM_CACHE = False
     output_name = "-".join(
         [
             DATASET_NAME,
@@ -197,6 +205,7 @@ if __name__ == "__main__":
             f"../Dataset/{DATASET_NAME}/labels.csv",
             cache_dir="../datasets_cache",
         )
+        ds = ds.rename_column("hands used", "hands")
 
         ds = ds.map(get_files, batched=True, batch_size=100)
         ds_non_flipped = ds.map(
@@ -224,6 +233,11 @@ if __name__ == "__main__":
         ds = ds.cast_column("rh", Array2D(shape=(None, 21 * 3), dtype="float32"))
         ds = ds.class_encode_column("label")
         ds = ds.class_encode_column("category")
+        ds = ds.class_encode_column("handshape")
+        ds = ds.class_encode_column("orientation")
+        ds = ds.class_encode_column("movement")
+        ds = ds.class_encode_column("location")
+        ds = ds.class_encode_column("hands")
 
         # Limit the number of samples per label to average label count
         label_ctr = Counter(ds["label"]).most_common()[1:]
