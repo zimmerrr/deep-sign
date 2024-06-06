@@ -107,7 +107,7 @@ def get_loss_and_accuracy(model, dl):
 # Jitter is applied as [-jitter / 2, jitter / 2]
 augmentation = AugmentationV2(
     [
-        Rotate(15),
+        Rotate(30),
         # Flip(0.5, 0.2, (0, 0)),
         Scale((0.5, 0.5, 0)),
         Transform((0.5, 0.5, 0)),
@@ -256,13 +256,16 @@ def test_transform(examples):
 if __name__ == "__main__":
     ds = load_from_disk(f"../datasets_cache/{DATASET_NAME}")
     ds = ds.remove_columns(["file", "fps"])
-    ds = ds.map(unnormalized_keypoints)
+    # ds = ds.map(unnormalized_keypoints)
     label_feature = ds["train"].features["label"]
     handshape_feature = ds["train"].features["handshape"]
     orientation_feature = ds["train"].features["orientation"]
     movement_feature = ds["train"].features["movement"]
     location_feature = ds["train"].features["location"]
     hands_feature = ds["train"].features["hands"]
+
+    idle_idx = label_feature.str2int("IDLE")
+    ds = ds.filter(lambda x: x["label"] != idle_idx)
 
     print(ds)
 
@@ -283,19 +286,19 @@ if __name__ == "__main__":
         input_size=(33 * 4 + 28)
         + (21 * 3 + 15 + 6 * 3)
         + (21 * 3 + 15 + 6 * 3),  # unnormalized input w/ directions
-        label_lstm_size=64,
+        label_lstm_size=24,
         label_lstm_layers=2,
-        feature_lstm_size=24,
+        feature_lstm_size=48,
         feature_lstm_layers=2,
-        label_linear_size=64,
-        handshape_linear_size=24,
-        orientation_linear_size=24,
-        movement_linear_size=24,
-        location_linear_size=24,
-        hands_linear_size=24,
+        label_linear_size=24,
+        handshape_linear_size=48,
+        orientation_linear_size=48,
+        movement_linear_size=48,
+        location_linear_size=48,
+        hands_linear_size=48,
         bidirectional=True,
         label_smoothing=0.0,
-        dropout=0.5,
+        dropout=0.3,
     )
     model = DeepSignV5(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
@@ -333,7 +336,7 @@ if __name__ == "__main__":
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes=f"New model with asl structures, flipped dataset",
+        notes=f"New model with asl structures, flipped dataset, zero mean, no idle, features dim higher than label",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,

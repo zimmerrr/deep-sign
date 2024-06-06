@@ -16,15 +16,19 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-RUN_NAME = "silver-dragon-146"
+RUN_NAME = "fresh-dawn-149"
 # DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
 sequence_async = []
 sentence = []
-num_frames_to_idle = 10
+num_frames_to_idle = 5
 target_fps = 20
 input_seq_len = 60
+
+
+WIDTH = 640
+HEIGHT = 360
 
 
 def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
@@ -55,6 +59,46 @@ def prob_viz(prediction: torch.Tensor, labels: ClassLabel, input_frame):
     return input_frame
 
 
+def kp_viz(frame, keypoints):
+    pose = keypoints["pose"]
+    lh = keypoints["lh"]
+    rh = keypoints["rh"]
+
+    pose_mean = keypoints["pose_mean"]
+    lh_mean = keypoints["lh_mean"]
+    rh_mean = keypoints["rh_mean"]
+
+    # Pose Playback
+    for idx in range(0, len(pose), 4):
+        x = pose[idx] + pose_mean[0]
+        y = pose[idx + 1] + pose_mean[1]
+        z = pose[idx + 2] + pose_mean[2]
+        visibility = pose[idx + 3]
+        center = (int(x * WIDTH), int(y * HEIGHT))
+
+        cv2.circle(frame, center, 3, (255, 255, 255))
+
+    # Left Hand Playback
+    for idx in range(0, len(lh), 3):
+        x = lh[idx] + lh_mean[0]
+        y = lh[idx + 1] + lh_mean[1]
+        z = lh[idx + 2] + lh_mean[2]
+        center = (int(x * WIDTH), int(y * HEIGHT))
+
+        cv2.circle(frame, center, 3, (0, 0, 255))
+
+    # Right Hand Playback
+    for idx in range(0, len(rh), 3):
+        x = rh[idx] + rh_mean[0]
+        y = rh[idx + 1] + rh_mean[1]
+        z = rh[idx + 2] + rh_mean[2]
+        center = (int(x * WIDTH), int(y * HEIGHT))
+
+        cv2.circle(frame, center, 3, (0, 255, 0))
+
+    return frame
+
+
 def unnormalized_keypoints(example):
     for field in ["pose", "lh", "rh"]:
         field_value = np.array(example[field])
@@ -77,9 +121,10 @@ holistic = mp_holistic.Holistic(
 
 
 def process_frame(frame):
-    _, results = mediapipe_detection(frame, holistic)
-    frame_kp = unnormalized_keypoints(extract_keypoints_v3(results))
-    return np.concatenate(
+    image, results = mediapipe_detection(frame, holistic)
+    frame_kp = extract_keypoints_v3(results)
+    # frame_kp = unnormalized_keypoints(extract_keypoints_v3(results))
+    keypoints = np.concatenate(
         [
             frame_kp["pose"],
             # frame_kp["pose_mean"],
@@ -95,6 +140,7 @@ def process_frame(frame):
             frame_kp["rh_dir"],
         ]
     )
+    return image, keypoints, frame_kp
 
 
 if __name__ == "__main__":
@@ -117,17 +163,20 @@ if __name__ == "__main__":
     model.eval()
 
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
     recording = False
     num_frames_no_hand = 0
     last_frame_time = None
+    last_preview_time = None
     last_output = None
+    last_input_frames = []
+    last_input_frames_idx = 0
 
     # Set mediapipe model
     with mp_hands.Hands(
-        min_detection_confidence=0.5,
+        min_detection_confidence=0.65,
         min_tracking_confidence=0.5,
         model_complexity=1,
     ) as hands:
@@ -157,12 +206,18 @@ if __name__ == "__main__":
             ):
                 recording = False
 
-                if len(sequence_async):
+                if len(sequence_async) > 10:
                     start_time = time.time()
                     keypoints = []
+                    frames = []
                     for results in sequence_async[:-num_frames_to_idle]:
-                        keypoints.append(results.get())
+                        frame, kp, frame_kp = results.get()
+                        keypoints.append(kp)
+                        frames.append((frame, frame_kp))
 
+                    last_input_frames = frames
+                    last_input_frames_idx = 0
+                    last_preview_time = time.time()
                     holistic_duration = round((time.time() - start_time) * 1000, 2)
 
                     # User has gone idle, make a prediction
@@ -234,6 +289,22 @@ if __name__ == "__main__":
                 (255, 255, 255),
                 2,
             )
+
+            # Display replay
+            if len(last_input_frames) > 0:
+                preview_width = int(WIDTH * 0.35)
+                preview_height = int(HEIGHT * 0.35)
+                preview, keypoints = last_input_frames[last_input_frames_idx]
+                kp_viz(preview, keypoints)
+                preview = cv2.resize(preview, (preview_width, preview_height))
+                image[-preview_height:, -preview_width:] = preview
+
+                now = time.time()
+                if (now - last_preview_time) >= 1 / target_fps:
+                    last_input_frames_idx = (last_input_frames_idx + 1) % len(
+                        last_input_frames
+                    )
+                    last_preview_time = now
 
             # Show to screen
             cv2.imshow("OpenCV Feed", image)
