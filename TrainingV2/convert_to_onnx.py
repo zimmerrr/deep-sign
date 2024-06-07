@@ -9,7 +9,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
 onnx_path = f"./checkpoints/{RUN_NAME}/deepsign.onnx"
-label_path = f"./checkpoints/{RUN_NAME}/labels.json"
+label_path = f"./checkpoints/{RUN_NAME}/metadata.json"
 
 # Load model
 checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
@@ -69,7 +69,7 @@ output = backend.run(
     ],
 )
 
-# Save labels.json
+# Save metadata.json
 with open(label_path, "w") as f:
     labels = checkpoint["label_names"]
     json.dump(

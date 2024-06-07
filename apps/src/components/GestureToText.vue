@@ -1,10 +1,19 @@
 <template>
   <div
-    :class="{'hidden': !inference}"
+    :class="{ 'hidden': !inferenceTime }"
     class="text-subtitle2 absolute-top-right q-mr-md"
     style="z-index: 2;"
   >
-    Inference: {{ inference.toFixed(2) }}ms
+    Inference: {{ inferenceTime.toFixed(2) }}ms
+    <br>
+    DeepSign: {{ deepSignTime.toFixed(2) }}ms
+  </div>
+  <div
+    :class="{ 'hidden': inferenceTime }"
+    class="text-subtitle2 absolute-top-right q-mr-md"
+    style="z-index: 2;"
+  >
+    Model loading, please wait...
   </div>
   <div class="container q-mx-auto">
     <div class="video-container">
@@ -12,30 +21,45 @@
         <canvas
           ref="canvasRef"
           class="canvas absolute-full"
-          style="z-index: 1;"
+          style="z-index: 1; object-fit: cover;"
         />
         <video
           ref="videoElementRef"
           autoplay
           muted
-          playinLine
+          playsinline
           class="absolute-full"
+          style="object-fit: cover;"
         />
       </q-responsive>
+    </div>
+    <div
+      v-if="predictions.length > 0"
+      class="text-uppercase"
+    >
+      <div>
+        {{ predictions.map((el) => el[0].label).join(' ') }}
+      </div>
+      <!-- <div v-for="(prediciton, idx) in ">
+        {{ predictions[predictions.length-1].map((el) => el.probability).join(' ') }}
+      </div> -->
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onBeforeMount, withCtx } from 'vue'
-import * as Holistic from '@mediapipe/holistic'
+import { ref, onMounted, onBeforeMount, withCtx, Ref } from 'vue'
+import { useRoute } from 'vue-router'
+import * as mpHolistic from '@mediapipe/holistic'
 import { drawConnectors, drawLandmarks, lerp, Data } from '@mediapipe/drawing_utils'
 import { waitVideoMetadata } from 'src/components/utils'
-import * as ort from 'onnxruntime-web'
-// import { runModel } from 'src/components/utils/modelHelper'
-// import { inferenceDeepSign } from 'src/components/utils/predict'
+import { extractKeypointsV3 } from './utils/keypoints'
+import { DeepSign, loadModel, runInference, topk } from './utils/model'
 
-const WIDTH = 500
-const HEIGHT = 500
+const WIDTH = 640
+const HEIGHT = 360
+const NUM_FRAMES_TO_IDLE = 5
+const TARGET_FPS = 20
+const INPUT_SEQ_LEN = 60
 
 const devices = ref<MediaDeviceInfo[]>([])
 const error = ref('')
@@ -44,24 +68,32 @@ const running = ref(true)
 const videoElementRef = ref<HTMLVideoElement>(null as any)
 const canvasRef = ref<HTMLCanvasElement>(null as any)
 
-const debugMode = ref(false)
+const route = useRoute()
+const debugMode = !!route.query.debug
+const complexity = route.query.complexity ? parseInt('0' || route.query.complexity as string) : 0
 let startTime = performance.now()
-const inference = ref(0)
+const inferenceTime = ref(0)
+const deepSignTime = ref(0)
 
 let canvasCtx: CanvasRenderingContext2D
-let holistic: Holistic.Holistic
+let holistic: mpHolistic.Holistic
+let deepsign: DeepSign
 
-const config: Holistic.HolisticConfig = {
+const predictions: Ref<any[]> = ref([])
+
+const config: mpHolistic.HolisticConfig = {
   locateFile: (file: any) => {
     console.log('https://cdn.jsdelivr.net/npm/@mediapipe/holistic@' +
-         `${Holistic.VERSION}/${file}`)
+      `${mpHolistic.VERSION}/${file}`)
     return 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic@' +
-         `${Holistic.VERSION}/${file}`
+      `${mpHolistic.VERSION}/${file}`
   },
 }
 
 // Function to initialize camera
 async function initialize() {
+  deepsign = await loadModel()
+
   console.log('Initializing camera...')
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
@@ -86,11 +118,14 @@ async function initialize() {
     console.log('Camera initialized successfully')
     running.value = true
 
-    holistic = new Holistic.Holistic(config)
-    holistic.setOptions({ modelComplexity: 0 })
+    holistic = new mpHolistic.Holistic(config)
+    holistic.setOptions({
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.5,
+      modelComplexity: 0,
+    })
     holistic.onResults(onResults)
     requestAnimationFrame(render)
-    // requestAnimationFrame(renderHolistic)
   } catch (err) {
     console.error(err)
     error.value = 'Unable to initialize camera'
@@ -103,8 +138,8 @@ async function selectCamera(cameraId: string) {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       deviceId: cameraId,
-      width: 500,
-      height: 500,
+      width: WIDTH,
+      height: HEIGHT,
     },
   })
   console.log(stream)
@@ -123,116 +158,95 @@ async function render() {
   requestAnimationFrame(render)
 }
 
-async function useModel() {
-  try {
-    const session = await ort.InferenceSession.create('./model.onnx')
+// async function useModel() {
+//   try {
+//     const session = await ort.InferenceSession.create('./model.onnx')
 
-    // prepare inputs. a tensor need its corresponding TypedArray as data
-    const dataA = Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    const dataB = Float32Array.from([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120])
-    const tensorA = new ort.Tensor('float32', dataA, [3, 4])
-    const tensorB = new ort.Tensor('float32', dataB, [4, 3])
+//     // prepare inputs. a tensor need its corresponding TypedArray as data
+//     const dataA = Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+//     const dataB = Float32Array.from([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120])
+//     const tensorA = new ort.Tensor('float32', dataA, [3, 4])
+//     const tensorB = new ort.Tensor('float32', dataB, [4, 3])
 
-    // prepare feeds. use model input names as keys.
-    const feeds = { a: tensorA, b: tensorB }
+//     // prepare feeds. use model input names as keys.
+//     const feeds = { a: tensorA, b: tensorB }
 
-    // feed inputs and run
-    const results = await session.run(feeds)
+//     // feed inputs and run
+//     const results = await session.run(feeds)
 
-    // read from results
-    const dataC = results.c.data
-    document.write(`data of result tensor 'c': ${dataC}`)
-  } catch (e) {
-    document.write(`failed to inference ONNX model: ${e}.`)
-  }
-}
-
-// function renderHolistic() {
-//   if (!running.value) return
-//   const startTime = performance.now()
-//   holistic.detectForVideo(videoElementRef.value, performance.now(), (results: any) => {
-//     console.log((performance.now() - startTime))
-//     if (results) {
-//       // POSE
-//       if (results.poseLandmarks.length > 0) {
-//         canvasCtx.clearRect(0, 0, WIDTH, HEIGHT)
-//         drawingUtils.drawLandmarks(results.poseLandmarks[0])
-//       }
-
-//       // RIGHT HAND
-//       if (results.rightHandLandmarks.length > 0) {
-//         canvasCtx.clearRect(0, 0, WIDTH, HEIGHT)
-//         drawingUtils.drawLandmarks(results.rightHandLandmarks[0])
-//       }
-
-//       // RIGHT HAND
-//       if (results.leftHandLandmarks.length > 0) {
-//         canvasCtx.clearRect(0, 0, WIDTH, HEIGHT)
-//         drawingUtils.drawLandmarks(results.leftHandLandmarks[0])
-//       }
-
-//       // IMPLEMENT DRAW LANDMARKS
-//       // for (const result in results) {
-//       //   const normalizedLandmark = results[result]
-//       //   console.log(normalizedLandmark)
-
-//       //   // Loop through each array
-//       //   for (let i = 0; i < normalizedLandmark.length; i++) {
-//       //     console.log(normalizedLandmark[i])
-//       //     // drawingUtils.drawConnectors(normalizedLandmark, normalizedLandmark[i], { color: '#ffffff' })
-//       //   }
-//       // }
-//     }
-//     requestAnimationFrame(renderHolistic)
-//   })
+//     // read from results
+//     const dataC = results.c.data
+//     document.write(`data of result tensor 'c': ${dataC}`)
+//   } catch (e) {
+//     document.write(`failed to inference ONNX model: ${e}.`)
+//   }
 // }
 
-function onResults(results: Holistic.Results): void {
-  inference.value = performance.now() - startTime
+const sequence: Record<string, any>[] = []
+const sentence: string[] = []
+let recording = false
+let numFramesNoHand = 0
+let lastFrameTime = 0
+
+function pushSequence(results: mpHolistic.Results) {
+  sequence.push(extractKeypointsV3(results))
+  lastFrameTime = performance.now()
+}
+
+async function onResults(results: mpHolistic.Results): Promise<void> {
+  const hasHands = Boolean(results.leftHandLandmarks || results.rightHandLandmarks)
+  if (!recording && hasHands) {
+    recording = true
+    sequence.splice(0, sequence.length)
+    numFramesNoHand = 0
+    pushSequence(results)
+  } else if (recording && !hasHands && numFramesNoHand > NUM_FRAMES_TO_IDLE) {
+    recording = false
+
+    if (sequence.length) {
+      const deepSignStartTime = performance.now()
+      const result = await runInference(deepsign, sequence)
+      const preds = topk(deepsign, result, 5)
+      predictions.value.push(preds)
+      if (predictions.value.length > 5) {
+        predictions.value.shift()
+      }
+      deepSignTime.value = performance.now() - deepSignStartTime
+    }
+  } else if (recording) {
+    console.log('recording')
+    if (!hasHands) numFramesNoHand++
+
+    const keypoints = extractKeypointsV3(results)
+    sequence.push(keypoints)
+    if (sequence.length > INPUT_SEQ_LEN) {
+      sequence.shift()
+    }
+  }
+
+  inferenceTime.value = performance.now() - startTime
   canvasCtx.save()
   canvasCtx.clearRect(0, 0, WIDTH, HEIGHT)
 
-  if (results.segmentationMask) {
-    canvasCtx.drawImage(
-      results.segmentationMask, 0, 0, WIDTH,
-      HEIGHT)
-
-    canvasCtx.fillStyle = '#00FF007F'
-    canvasCtx.fillRect(0, 0, WIDTH, HEIGHT)
-
-    // Only overwrite missing pixels.
-    canvasCtx.globalCompositeOperation = 'destination-atop'
-    canvasCtx.drawImage(
-      results.image, 0, 0, WIDTH, HEIGHT)
-
-    canvasCtx.globalCompositeOperation = 'source-over'
-  } else {
-    canvasCtx.drawImage(
-      results.image, 0, 0, WIDTH, HEIGHT)
-  }
-
-  // console.log(results.poseLandmarks)
-  // inferenceDeepSign(results)
-
-  if (debugMode.value) {
-  // POSE
+  if (debugMode) {
+    // POSE
     drawConnectors(
-      canvasCtx, results.poseLandmarks, Holistic.POSE_CONNECTIONS,
+      canvasCtx, results.poseLandmarks, mpHolistic.POSE_CONNECTIONS,
       { color: 'white' })
     drawLandmarks(
       canvasCtx,
-      Object.values(Holistic.POSE_LANDMARKS_LEFT)
+      Object.values(mpHolistic.POSE_LANDMARKS_LEFT)
         .map(index => results.poseLandmarks[index]),
       { visibilityMin: 0.65, color: 'white', fillColor: 'rgb(255,138,0)' })
     drawLandmarks(
       canvasCtx,
-      Object.values(Holistic.POSE_LANDMARKS_RIGHT)
+      Object.values(mpHolistic.POSE_LANDMARKS_RIGHT)
         .map(index => results.poseLandmarks[index]),
       { visibilityMin: 0.65, color: 'white', fillColor: 'rgb(0,217,231)' })
 
     // HANDS
     drawConnectors(
-      canvasCtx, results.rightHandLandmarks, Holistic.HAND_CONNECTIONS,
+      canvasCtx, results.rightHandLandmarks, mpHolistic.HAND_CONNECTIONS,
       { color: 'white' })
     drawLandmarks(canvasCtx, results.rightHandLandmarks, {
       color: 'white',
@@ -243,7 +257,7 @@ function onResults(results: Holistic.Results): void {
       },
     })
     drawConnectors(
-      canvasCtx, results.leftHandLandmarks, Holistic.HAND_CONNECTIONS,
+      canvasCtx, results.leftHandLandmarks, mpHolistic.HAND_CONNECTIONS,
       { color: 'white' })
     drawLandmarks(canvasCtx, results.leftHandLandmarks, {
       color: 'white',
@@ -254,35 +268,13 @@ function onResults(results: Holistic.Results): void {
       },
     })
 
-    // FACE
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_TESSELATION,
-      { color: '#C0C0C070', lineWidth: 1 })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_RIGHT_EYE,
-      { color: 'rgb(0,217,231)' })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_RIGHT_EYEBROW,
-      { color: 'rgb(0,217,231)' })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_LEFT_EYE,
-      { color: 'rgb(255,138,0)' })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_LEFT_EYEBROW,
-      { color: 'rgb(255,138,0)' })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_FACE_OVAL,
-      { color: '#E0E0E0', lineWidth: 5 })
-    drawConnectors(
-      canvasCtx, results.faceLandmarks, Holistic.FACEMESH_LIPS,
-      { color: '#E0E0E0', lineWidth: 5 })
-
     canvasCtx.restore()
   }
 }
 
 onMounted(async () => {
   initialize()
+  // runModel()
 })
 
 onBeforeMount(async () => {

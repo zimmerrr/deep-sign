@@ -11,7 +11,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "dev:android": "quasar dev -m capacitor -T android",
-    "build:android": "quasar build -m capacitor -T android --ide",
+    "build:android": "quasar build -m capacitor -T android --ide --debug",
     "build": "quasar build"
   },
   "dependencies": {
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@quasar/app-vite": "^2.0.0-beta.5",
+    "@types/lodash": "^4.17.4",
     "@types/node": "^20.5.9",
     "@typescript-eslint/eslint-plugin": "^6.6.0",
     "@typescript-eslint/parser": "^6.6.0",
@@ -44,6 +45,7 @@
     "eslint-plugin-vue": "^9.0.0",
     "typescript": "~5.3.0",
     "vite-plugin-checker": "^0.6.4",
+    "vite-plugin-mediapipe": "^0.1.0",
     "vue-tsc": "^1.8.22"
   },
   "engines": {
