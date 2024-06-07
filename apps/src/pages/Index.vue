@@ -64,7 +64,7 @@ enum Mode {
 }
 
 const hasModel = ref(true)
-const mode = ref<Mode>(hasModel.value ? Mode.settings : Mode.loading)
+const mode = ref<Mode>(hasModel.value ? Mode.gesture_to_text : Mode.loading)
 const lastScannerMode = ref(0)
 
 const menu = ref({})
