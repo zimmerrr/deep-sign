@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import torch.nn.functional as F
-from model.deepsign_v5 import DeepSignV5
+from model.deepsign_v6 import DeepSignV6
 import torch
 from datasets import load_from_disk, ClassLabel
 from utils import mediapipe_detection, draw_styled_landmarks, extract_keypoints_v3
@@ -16,7 +16,7 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-RUN_NAME = "decent-lion-152"
+RUN_NAME = "earnest-cloud-155"
 # DATASET_NAME = "v4-fsl-105-v4-20fps-orig"
 
 checkpoint_path = f"./checkpoints/{RUN_NAME}/checkpoint.pt"
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         checkpoint["test_acc"],
     )
 
-    model = DeepSignV5(checkpoint["config"]).to(DEVICE)
+    model = DeepSignV6(checkpoint["config"]).to(DEVICE)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 

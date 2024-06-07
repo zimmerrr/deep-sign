@@ -1,5 +1,5 @@
 import time
-from model.deepsign_v5 import DeepSignV5, DeepSignConfigV5
+from model.deepsign_v6 import DeepSignV6, DeepSignConfigV6
 from augmentations.augmentation_v2 import AugmentationV2, Transform, Flip, Scale, Rotate
 from utils import get_hand_angles, get_pose_angles, get_directions
 from datasets import load_from_disk
@@ -25,7 +25,7 @@ GESTURE_LENGTH = 1
 BATCH_SIZE = 32
 MINIBATCH_SIZE = 32
 INPUT_SEQ_LENGTH = -1  # -1 for whole sequence
-ENABLE_AUGMENTATION = False
+ENABLE_AUGMENTATION = True
 # NUM_SEQ_ACCURACY_CHECK = 1
 
 # Make sure the batch size is divisible by the mini-batch size
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     ds["train"].set_transform(train_transform)
     ds["test"].set_transform(test_transform)
 
-    model_config = DeepSignConfigV5(
+    model_config = DeepSignConfigV6(
         num_label=len(label_feature.names),
         num_handshape=len(handshape_feature.names),
         num_orientation=len(orientation_feature.names),
@@ -290,7 +290,7 @@ if __name__ == "__main__":
         label_lstm_layers=2,
         feature_lstm_size=32,
         feature_lstm_layers=2,
-        label_linear_size=24,
+        label_linear_size=len(label_feature.names),
         handshape_linear_size=32,
         orientation_linear_size=32,
         movement_linear_size=32,
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         label_smoothing=0.0,
         dropout=0.3,
     )
-    model = DeepSignV5(model_config).to(DEVICE)
+    model = DeepSignV6(model_config).to(DEVICE)
     print("Number of parameters:", model.get_num_parameters())
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -329,14 +329,14 @@ if __name__ == "__main__":
         **dl_params,
     )
 
-    tags = [DATASET_NAME, "deepsign_v5", "train_v5", "fp32", "no_face"]
+    tags = [DATASET_NAME, "deepsign_v6", "train_v6", "fp32", "no_face"]
     if ENABLE_AUGMENTATION:
         tags.append("augmentation_v2")
 
     wandb.init(
         # mode="disabled",
         project="deep-sign-v2",
-        notes=f"New model with asl structures, flipped dataset, zero mean, no idle, features dim higher than label",
+        notes=f"hearty-dew-153 w/ sum of the features instead of concat, w/ aug",
         config={
             "dataset": "v2",
             "batch_size": BATCH_SIZE,
