@@ -1,19 +1,26 @@
 <template>
   <div
     :class="{ 'hidden': !inferenceTime }"
-    class="text-subtitle2 absolute-top-right q-mr-md"
+    class="inference absolute-top-right q-mr-md"
     style="z-index: 2;"
   >
-    Inference: {{ inferenceTime.toFixed(2) }}ms
-    <br>
-    DeepSign: {{ deepSignTime.toFixed(2) }}ms
+    <div>
+      Inference: {{ inferenceTime.toFixed(2) }}ms
+    </div>
+    <div>
+      DeepSign: {{ deepSignTime.toFixed(2) }}ms
+    </div>
   </div>
   <div
     :class="{ 'hidden': inferenceTime }"
     class="text-subtitle2 absolute-top-right q-mr-md"
     style="z-index: 2;"
   >
-    Model loading, please wait...
+    Model loading, please wait
+    <q-spinner-dots
+      color="white"
+      size="lg"
+    />
   </div>
   <div class="container q-mx-auto">
     <div class="video-container">
@@ -37,12 +44,33 @@
       v-if="predictions.length > 0"
       class="text-uppercase"
     >
-      <div>
+      <div class="predictions">
         {{ predictions.map((el) => el[0].label).join(' ') }}
       </div>
-      <!-- <div v-for="(prediciton, idx) in ">
-        {{ predictions[predictions.length-1].map((el) => el.probability).join(' ') }}
-      </div> -->
+      <div
+        v-for="(gesture, idx) in predictions[predictions.length-1]"
+        :key="idx"
+        class="text-left"
+      >
+        <div class="gesture-label">
+          {{ gesture.label }}:
+        </div>
+        <div class>
+          <q-linear-progress
+            stripe
+            rounded
+            size="20px"
+            :value="gesture.probability"
+            color="white"
+            class="q-mt-sm"
+          />
+        </div>
+      </div>
+    </div>
+    <div v-else>
+      <div class="text-uppercase gesture-label">
+        Start signing to begin
+      </div>
     </div>
   </div>
 </template>
@@ -292,4 +320,12 @@ onBeforeMount(async () => {
   width: 100%
   // height: 100%
 
+.predictions
+  font-size: 60%
+
+.inference
+  font-size: 40%
+  line-height: 1.25
+.gesture-label
+  font-size: 60%
 </style>
