@@ -18,11 +18,23 @@
             v-if="menu"
             class="q-my-md text-center text-white text-h4"
           >
-            <gestures v-if="mode === Mode.gestures" />
+            <gestures
+              v-if="mode === Mode.gestures"
+            />
             <text-to-gesture v-if="mode === Mode.text_to_gesture" />
-            <gesture-to-text v-if="mode === Mode.gesture_to_text" />
+            <gesture-to-text
+              v-if="mode === Mode.gesture_to_text"
+              :settings="settings"
+            />
             <Upload v-if="mode === Mode.upload" />
-            <Settings v-if="mode === Mode.settings" />
+            <Settings
+              v-if="mode === Mode.settings"
+              :settings="settings"
+              @update-model="settings.modelVersion = $event"
+              @update-complexity="settings.modelComplexity = $event"
+              @update-det-conf="settings.minDetectionConfidence = $event"
+              @update-track-conf="settings.minTrackingConfidence = $event"
+            />
           </div>
         </div>
       </q-card-section>
@@ -40,7 +52,7 @@ import GestureToText from 'src/components/GestureToText.vue'
 import Upload from 'src/components/Upload.vue'
 import Settings from 'src/components/Settings.vue'
 import { MENU } from 'src/components/constants'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
 enum Mode {
   loading,
@@ -52,12 +64,19 @@ enum Mode {
 }
 
 const hasModel = ref(true)
-const mode = ref<Mode>(hasModel.value ? Mode.gestures : Mode.loading)
+const mode = ref<Mode>(hasModel.value ? Mode.settings : Mode.loading)
 const lastScannerMode = ref(0)
 
 const menu = ref({})
 const header = ref('Gesture')
 const subheader = ref('Gesture')
+
+const settings = {
+  modelVersion: 'DeepSign v6',
+  modelComplexity: 'Heavy' as any,
+  minDetectionConfidence: 0.65,
+  minTrackingConfidence: 5,
+}
 
 function onUpdateMenu(option: any) {
   header.value = option.header
@@ -70,6 +89,10 @@ function setMode(newMode: Mode) {
   lastScannerMode.value = newMode
   mode.value = newMode
 }
+
+onMounted(() => {
+  console.log('Settings', settings)
+})
 </script>
 
 <style scoped lang="sass">

@@ -24,7 +24,7 @@
   </div>
   <div class="container q-mx-auto">
     <div class="video-container">
-      <q-responsive :ratio="WIDTH/HEIGHT">
+      <q-responsive :ratio="WIDTH / HEIGHT">
         <canvas
           ref="canvasRef"
           class="canvas absolute-full"
@@ -48,7 +48,7 @@
         {{ predictions.map((el) => el[0].label).join(' ') }}
       </div>
       <div
-        v-for="(gesture, idx) in predictions[predictions.length-1]"
+        v-for="(gesture, idx) in predictions[predictions.length - 1]"
         :key="idx"
         class="text-left"
       >
@@ -81,13 +81,17 @@ import * as mpHolistic from '@mediapipe/holistic'
 import { drawConnectors, drawLandmarks, lerp, Data } from '@mediapipe/drawing_utils'
 import { waitVideoMetadata } from 'src/components/utils'
 import { extractKeypointsV3 } from './utils/keypoints'
-import { DeepSign, loadModel, runInference, topk } from './utils/model'
+import { DeepSignV6, DeepSignV2, loadModelV6, topk, loadModelV2, loadModelV3, DeepSignV3 } from './utils/model'
 
 const WIDTH = 640
 const HEIGHT = 360
 const NUM_FRAMES_TO_IDLE = 5
 const TARGET_FPS = 20
 const INPUT_SEQ_LEN = 60
+
+const props = defineProps({
+  settings: { type: Object, default: null },
+})
 
 const devices = ref<MediaDeviceInfo[]>([])
 const error = ref('')
@@ -105,22 +109,34 @@ const deepSignTime = ref(0)
 
 let canvasCtx: CanvasRenderingContext2D
 let holistic: mpHolistic.Holistic
-let deepsign: DeepSign
+let deepsign: DeepSignV6 | DeepSignV3 | DeepSignV2
 
 const predictions: Ref<any[]> = ref([])
 
 const config: mpHolistic.HolisticConfig = {
   locateFile: (file: any) => {
-    console.log('https://cdn.jsdelivr.net/npm/@mediapipe/holistic@' +
+    console.log('/holistic@' +
       `${mpHolistic.VERSION}/${file}`)
-    return 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic@' +
+    return '/holistic@' +
       `${mpHolistic.VERSION}/${file}`
   },
 }
 
+const complexityMapping: Record<string, number> = {
+  Lite: 0,
+  Full: 1,
+  Heavy: 2,
+}
+
 // Function to initialize camera
 async function initialize() {
-  deepsign = await loadModel()
+  if (props.settings.modelVersion === 'DeepSign v3') {
+    deepsign = await loadModelV3()
+  } else if (props.settings.modelVersion === 'DeepSign v2') {
+    deepsign = await loadModelV2()
+  } else {
+    deepsign = await loadModelV6()
+  }
 
   console.log('Initializing camera...')
   try {
@@ -145,12 +161,11 @@ async function initialize() {
     }
     console.log('Camera initialized successfully')
     running.value = true
-
     holistic = new mpHolistic.Holistic(config)
     holistic.setOptions({
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.5,
-      modelComplexity: 0,
+      modelComplexity: getMappedComplexity(props.settings.modelComplexity) as any,
     })
     holistic.onResults(onResults)
     requestAnimationFrame(render)
@@ -233,7 +248,7 @@ async function onResults(results: mpHolistic.Results): Promise<void> {
 
     if (sequence.length) {
       const deepSignStartTime = performance.now()
-      const result = await runInference(deepsign, sequence)
+      const result = await deepsign.runInference(sequence)
       const preds = topk(deepsign, result, 5)
       predictions.value.push(preds)
       if (predictions.value.length > 5) {
@@ -298,6 +313,16 @@ async function onResults(results: mpHolistic.Results): Promise<void> {
 
     canvasCtx.restore()
   }
+}
+
+function getMappedComplexity(complexity: string) {
+  const mappedValue = complexityMapping[complexity as any]
+  console.log(mappedValue)
+  if (mappedValue === undefined) {
+    return 0
+  }
+
+  return mappedValue
 }
 
 onMounted(async () => {

@@ -195,6 +195,28 @@ export function preprocessHandLandmark(inputKeypoints: NormalizedLandmarkList) {
   return { keypoints, mean, angles, directions }
 }
 
+export function extractKeypointsV1(results: Results) {
+  const output: Record<string, any> = {}
+
+  if (results.poseLandmarks) {
+    output.pose = results.poseLandmarks
+  }
+
+  if (results.faceLandmarks) {
+    output.face = results.faceLandmarks
+  }
+
+  if (results.leftHandLandmarks) {
+    output.lh = results.leftHandLandmarks
+  }
+
+  if (results.rightHandLandmarks) {
+    output.rh = results.rightHandLandmarks
+  }
+
+  return output
+}
+
 export function extractKeypointsV3(results: Results) {
   const output: Record<string, any> = {}
 

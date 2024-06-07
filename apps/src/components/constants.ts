@@ -26,8 +26,8 @@ export const MENU = [
   // },
   {
     key: 'settings',
-    header: 'Settings',
-    subheader: 'Tweak the app',
+    header: '',
+    subheader: '',
     icon: 'settings',
   },
 ]
