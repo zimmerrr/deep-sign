@@ -40,8 +40,8 @@ class DeepSignV3(nn.Module):
         )
         self.criterion = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
 
-    def forward(self, input, target=None):
-        output, _ = self.rnn(input)
+    def forward(self, input, hn=None, target=None):
+        output, _ = self.rnn(input, hn)
         output = self.lstm_dropout(output)
         output = self.linear1(output)
         output = self.dropout(output)

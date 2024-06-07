@@ -36,9 +36,9 @@ class DeepSignV2(nn.Module):
             config.num_label,
         )
 
-    def forward(self, input):
+    def forward(self, input, hn=None, cn=None):
         batch_size = input.shape[0]
-        output, (hn, cn) = self.lstm1(input)
+        output, (hn, cn) = self.lstm1(input, (hn, cn))
         output = self.linear1(hn.view((batch_size, -1)))
         output = self.dropout(output)
         output = self.linear2(output)

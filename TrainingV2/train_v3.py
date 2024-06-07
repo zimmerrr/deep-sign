@@ -62,7 +62,7 @@ def get_loss_and_accuracy(model, dl):
         )
         label = sample["label"].to(DEVICE)
 
-        output, loss = model(input, label)
+        output, loss = model(input, target=label)
         total_loss.append(loss.item())
 
         output = F.softmax(output, dim=-1)
@@ -333,7 +333,7 @@ if __name__ == "__main__":
             )
             label = sample["label"].to(DEVICE)
 
-            output, loss = model(input, label)
+            output, loss = model(input, target=label)
 
             # Accomodate mini-batch size in the loss
             loss = loss / (BATCH_SIZE / MINIBATCH_SIZE)
