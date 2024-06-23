@@ -115,10 +115,8 @@ const predictions: Ref<any[]> = ref([])
 
 const config: mpHolistic.HolisticConfig = {
   locateFile: (file: any) => {
-    console.log('/holistic@' +
-      `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@'/${file}`)
-    return '/holistic@' +
-      `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@/${file}`
+    console.log(`https://cdn.jsdelivr.net/npm/@mediapipe/holistic@'/${file}`)
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@/${file}`
   },
 }
 
