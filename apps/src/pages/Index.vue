@@ -73,7 +73,7 @@ const subheader = ref('Gesture')
 
 const settings = {
   modelVersion: 'DeepSign v6',
-  modelComplexity: 'Heavy' as any,
+  modelComplexity: 'Full' as any,
   minDetectionConfidence: 0.65,
   minTrackingConfidence: 5,
 }
