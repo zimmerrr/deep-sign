@@ -47,23 +47,25 @@
       <div class="predictions">
         {{ predictions.map((el) => el[0].label).join(' ') }}
       </div>
-      <div
-        v-for="(gesture, idx) in predictions[predictions.length - 1]"
-        :key="idx"
-        class="text-left"
-      >
-        <div class="gesture-label">
-          {{ gesture.label }}:
-        </div>
-        <div class>
-          <q-linear-progress
-            stripe
-            rounded
-            size="20px"
-            :value="gesture.probability"
-            color="white"
-            class="q-mt-sm"
-          />
+      <div v-if="debugMode">
+        <div
+          v-for="(gesture, idx) in predictions[predictions.length - 1]"
+          :key="idx"
+          class="text-left"
+        >
+          <div class="gesture-label">
+            {{ gesture.label }}:
+          </div>
+          <div class>
+            <q-linear-progress
+              stripe
+              rounded
+              size="20px"
+              :value="gesture.probability"
+              color="white"
+              class="q-mt-sm"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -83,8 +85,8 @@ import { waitVideoMetadata } from 'src/components/utils'
 import { extractKeypointsV3 } from './utils/keypoints'
 import { DeepSignV6, DeepSignV2, loadModelV6, topk, loadModelV2, loadModelV3, DeepSignV3 } from './utils/model'
 
-const WIDTH = 640
-const HEIGHT = 360
+const WIDTH = 1080
+const HEIGHT = 1500
 const NUM_FRAMES_TO_IDLE = 5
 const TARGET_FPS = 20
 const INPUT_SEQ_LEN = 60
@@ -251,7 +253,7 @@ async function onResults(results: mpHolistic.Results): Promise<void> {
       const result = await deepsign.runInference(sequence)
       const preds = topk(deepsign, result, 5)
       predictions.value.push(preds)
-      if (predictions.value.length > 5) {
+      if (predictions.value.length > 1) {
         predictions.value.shift()
       }
       deepSignTime.value = performance.now() - deepSignStartTime
