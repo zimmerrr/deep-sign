@@ -23,9 +23,6 @@ importers:
       '@capacitor/core':
         specifier: ^5.0.0
         version: 5.7.4
-      '@jcesarmobile/ssl-skip':
-        specifier: ^0.2.0
-        version: 0.2.0
 
 packages:
 
@@ -87,9 +84,6 @@ packages:
   '@ionic/utils-terminal@2.3.5':
     resolution: {integrity: sha512-3cKScz9Jx2/Pr9ijj1OzGlBDfcmx7OMVBt4+P1uRR0SSW4cm1/y3Mo4OY3lfkuaYifMNBW8Wz6lQHbs1bihr7A==}
     engines: {node: '>=16.0.0'}
-
-  '@jcesarmobile/ssl-skip@0.2.0':
-    resolution: {integrity: sha512-hkhOM5+qPm5xzOYcbUODzYTZKyATEM3qixzUL1gJsJckZ5wAUQxyZJFM3hcUANv8fV8cONfX7A+d/DJpzVvM+Q==}
 
   '@types/fs-extra@8.1.5':
     resolution: {integrity: sha512-0dzKcwO+S8s2kuF5Z9oUWatQJj5Uq/iqphEtE3GQJVRRYm/tD1LglU2UnXi2A8jLq5umkGouOXOR9y0n613ZwQ==}
@@ -546,8 +540,6 @@ snapshots:
       wrap-ansi: 7.0.0
     transitivePeerDependencies:
       - supports-color
-
-  '@jcesarmobile/ssl-skip@0.2.0': {}
 
   '@types/fs-extra@8.1.5':
     dependencies:

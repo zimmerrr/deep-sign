@@ -7,6 +7,3 @@ project(':capacitor-app').projectDir = new File('../node_modules/.pnpm/@capacito
 
 include ':capacitor-camera'
 project(':capacitor-camera').projectDir = new File('../node_modules/.pnpm/@capacitor+camera@6.0.0_@capacitor+core@5.7.4/node_modules/@capacitor/camera/android')
-
-include ':jcesarmobile-ssl-skip'
-project(':jcesarmobile-ssl-skip').projectDir = new File('../node_modules/.pnpm/@jcesarmobile+ssl-skip@0.2.0/node_modules/@jcesarmobile/ssl-skip/android')
